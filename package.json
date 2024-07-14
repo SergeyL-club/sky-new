@@ -5,7 +5,11 @@
   "scripts": {
     "build": "node build.mjs",
     "start": "node ./build/main.js",
-    "test": "nodemon"
+    "dev": "nodemon",
+    "lint": "eslint \"src/**/*.{js,ts}\"",
+    "lint:fix": "eslint \".\\src\\**\\*.{js,ts}\" --fix",
+    "prettier": "prettier --check \".\\src\\**\\*.{js,ts}\"",
+    "prettier:fix": "prettier --write \".\\src\\**\\*.{js,ts}\""
   },
   "keywords": [],
   "author": "",
@@ -13,10 +17,16 @@
   "description": "",
   "devDependencies": {
     "@types/node": "^20.14.10",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
     "esbuild": "^0.23.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
     "fs": "^0.0.1-security",
     "nodemon": "^3.1.4",
     "path": "^0.12.7",
+    "prettier": "^3.3.3",
+    "prettier-eslint": "^16.3.0",
     "rimraf": "^6.0.1",
     "typescript": "^5.5.3"
   }
