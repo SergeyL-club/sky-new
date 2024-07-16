@@ -1,4 +1,4 @@
-document['getCookie'] = (key) => {
+const getCookie = (key) => {
   const keyVal = document.cookie.split(' ');
 
   for (let index = 0; index < keyVal.length; index++) {

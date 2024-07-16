@@ -1,6 +1,6 @@
 var keys = [];
 
-document['refreshSocket'] = () => {
+const refreshSocket = () => {
   const socket = io('wss://ws.skycrypto.net', {
     transports: ['websocket'],
     path: '/sky-socket',
