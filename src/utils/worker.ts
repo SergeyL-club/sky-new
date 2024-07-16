@@ -2,11 +2,11 @@ import { Worker } from 'node:worker_threads';
 
 type Callback<T> = (message: T) => void;
 
-type Callbacks = {
-  [key: number]: Callback<any>;
-}
+type Callbacks<T> = {
+  [key: number]: Callback<T>;
+};
 
-const generateId = (keys: Callbacks) => {
+const generateId = <T>(keys: Callbacks<T>) => {
   let id = 0;
   while (keys[id]) {
     id++;
@@ -14,10 +14,10 @@ const generateId = (keys: Callbacks) => {
   return id;
 };
 
-const generateWorkerChannel = <ResolveType extends any, PostMessageType extends any>(path: string, exit: Callback<number>) => {
+const generateWorkerChannel = <ResolveType, PostMessageType>(path: string, exit: Callback<number>) => {
   const worker = new Worker(path);
 
-  const callbacks: Callbacks = {};
+  const callbacks: Callbacks<ResolveType> = {};
 
   worker.on('exit', (code: number) => exit(code));
   worker.on('message', (msg) => {
@@ -33,11 +33,11 @@ const generateWorkerChannel = <ResolveType extends any, PostMessageType extends 
     worker,
     post: (message: PostMessageType) =>
       new Promise<ResolveType>((resolve, reject) => {
-        const eventMessage: Callback<any> = (msg: any) => resolve(msg);
+        const eventMessage: Callback<ResolveType> = (msg: ResolveType) => resolve(msg);
         const messageId = generateId(callbacks);
         callbacks[messageId] = eventMessage;
 
-        const eventError = (msg: any) => reject(msg);
+        const eventError = (msg: unknown) => reject(msg);
         const errorId = generateId(callbacks);
         callbacks[errorId] = eventError;
 

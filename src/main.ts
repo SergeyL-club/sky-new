@@ -1,11 +1,5 @@
-import path from 'path';
 import logger from './utils/logger.js';
-import { generateWorkerChannel } from './utils/worker.js';
 import browser from './utils/browser.js';
-
-type WorkerData = {
-  test: number;
-}
 
 const main = () =>
   new Promise<number>((_, reject) => {

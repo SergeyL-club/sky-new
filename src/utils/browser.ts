@@ -1,5 +1,5 @@
-import * as CONFIG from '../config.js';
 import type { Browser, ElementHandle, Page } from 'puppeteer';
+import type { VanillaPuppeteer } from 'puppeteer-extra';
 import logger from './logger.js';
 import { PuppeteerExtra } from 'puppeteer-extra';
 import puppeteer from 'puppeteer';
@@ -8,18 +8,34 @@ import { delay, random } from './dateTime.js';
 import path from 'path';
 import { readdirSync } from 'fs';
 import md5 from 'md5';
+import * as CONFIG from '../config.js';
+
+type Keys = {
+  [key: string]: string;
+};
+
+type Params = {
+  headless: boolean;
+  args: string[];
+  defaultViewport: {
+    width: number;
+    height: number;
+  };
+  ignoreDefaultArgs: string[];
+  userDataDir: string;
+};
 
 type ProxyData = {
   url: string;
   user: string;
   pass: string;
-}
+};
 
 type InputSet = {
   input: ElementHandle;
   text: string;
   page?: Page;
-}
+};
 
 class BrowserManager {
   private static instance: BrowserManager;
@@ -39,7 +55,7 @@ class BrowserManager {
     BrowserManager.instance = this;
   }
 
-  generateAuthKey = (keys: any) => {
+  generateAuthKey = (keys: Keys) => {
     const t = 'e' === keys['aKM'];
     let r = Object.keys(keys).sort();
     if (t) r = r.reverse();
@@ -64,7 +80,7 @@ class BrowserManager {
   };
 
   initParams = () => {
-    const params: any = {};
+    const params = {} as Params;
     if (process.argv.includes('--headless')) params['headless'] = true;
     else params['headless'] = !true;
     params['args'] = ['--no-sandbox', '--no-default-browser-check', ...(this.proxyParams && [`--proxy-server=${(<ProxyData>this.proxyParams).url}`])];
@@ -106,7 +122,7 @@ class BrowserManager {
   };
 
   initPage = async (url: string) => {
-    let page: Page;
+    let page: Page | null = null;
     if (!this.browser) {
       logger.warn('При создание page необходим browser, но он является null');
       return null;
@@ -124,7 +140,7 @@ class BrowserManager {
 
       // close old browser
       if (this.browser) await this.browser.close();
-      const puppeteerExtra = new PuppeteerExtra(puppeteer as any);
+      const puppeteerExtra = new PuppeteerExtra(puppeteer as unknown as VanillaPuppeteer);
       puppeteerExtra.use(stealsPlugin());
 
       this.browser = await puppeteerExtra.launch(params);
@@ -156,22 +172,25 @@ class BrowserManager {
       // end
       logger.info('Установка базовой конфигурации завершена');
       return true;
-    } catch (e: any) {
-      logger.error(e, 'Ошибка без обработки (init browser)');
+    } catch (error: unknown) {
+      logger.error(error, 'Ошибка без обработки (init browser)');
       return false;
     }
   };
 
   waitReAuth = (): Promise<boolean> =>
-    new Promise(async (res) => {
+    new Promise((res) => {
       let cnt = 0;
+      let isDelay = false;
+
       while (cnt < 250) {
-        await delay(100);
+        isDelay = true;
+        delay(100).then(() => (isDelay = false));
         if (!this.isReAuth) {
           res(true);
           return;
         }
-        cnt++;
+        if (!isDelay) cnt++;
       }
       res(false);
     });
@@ -214,8 +233,8 @@ class BrowserManager {
   };
 
   getAuthKey = async (page: Page) => {
-    let keys: any | null = null;
-    keys = await page.evaluate('new Promise((resolve) => (refresh().then(resolve).catch(null)))');
+    let keys: Keys | null = null;
+    keys = (await page.evaluate('new Promise((resolve) => (refresh().then(resolve).catch(null)))')) as Keys | null;
     if (!keys) {
       logger.warn('Не удалось получить ключи для создания auth key');
       return false;

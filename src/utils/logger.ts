@@ -19,7 +19,7 @@ const ColorsStart = {
 
 type Levels = keyof typeof customLevels;
 
-export const renderTextLine = (msg: any, level: Levels) => {
+export const renderTextLine = <T extends string>(msg: T, level: Levels) => {
   const data = JSON.parse(msg);
   let text = '';
   text += `(${getDate({ isMore: 'format', actualDate: data['time'] })}) `;
