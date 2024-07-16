@@ -8,7 +8,7 @@ interface WorkerData {
 }
 
 const main = () =>
-  new Promise<number>((resolve, reject) => {
+  new Promise<number>((_, reject) => {
     try {
       browser.initBrowser();
     } catch (error: unknown) {
