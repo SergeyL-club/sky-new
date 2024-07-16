@@ -1,4 +1,4 @@
-const refresh = async () =>
+document['refresh'] = async () =>
   new Promise((resolve, reject) => {
     const headers = {
       Accept: 'application/json, text/plain, */*',
