@@ -1,4 +1,4 @@
-var keys = [];
+var keys = {};
 
 const refreshSocket = () => {
   const socket = io('wss://ws.skycrypto.net', {
