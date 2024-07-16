@@ -35,13 +35,26 @@ export const getDate = <MoreType extends 'base' | 'more' | 'format' | 'formatDat
   moreDateForm.seconds = date.getSeconds().toString().length == 1 ? '0' + date.getMinutes() : date.getSeconds().toString();
   moreDateForm.milliseconds = date.getMilliseconds().toString();
 
-  if (isMore === 'format')
-    return `${moreDateForm.year}-${moreDateForm.month}-${moreDateForm.day} ${moreDateForm.hours}:${moreDateForm.minutes}:${moreDateForm.seconds}` as any;
+  if (isMore === 'format') return `${moreDateForm.year}-${moreDateForm.month}-${moreDateForm.day} ${moreDateForm.hours}:${moreDateForm.minutes}:${moreDateForm.seconds}` as any;
 
   if (isMore === 'formatDate') return `${moreDateForm.year}-${moreDateForm.month}-${moreDateForm.day}` as any;
 
   return moreDateForm as any;
 };
+
+export const timer = async (func: () => Promise<void>, ms = 200): Promise<() => void> =>
+  new Promise(async (resolve) => {
+    let isTime: boolean = true;
+    resolve(() => (isTime = false));
+    while (isTime) {
+      let start = Date.now();
+      try {
+        await func();
+      } catch (e) {}
+      let delta = Date.now() - start;
+      if (delta < ms) await delay(ms - delta);
+    }
+  });
 
 export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const random = (min: number, max: number) => Math.floor(min + Math.random() * (max + 1 - min));
