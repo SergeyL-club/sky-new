@@ -1,6 +1,7 @@
 import path from 'path';
 import logger from './utils/logger.js';
 import { generateWorkerChannel } from './utils/worker.js';
+import browser from './utils/browser.js';
 
 interface WorkerData {
   test: number;
@@ -8,22 +9,11 @@ interface WorkerData {
 
 const main = () =>
   new Promise<number>((resolve, reject) => {
-    if (process.argv.length > 10) reject(new Error('Argv length > 10'));
-
-    const workerTest = generateWorkerChannel<any, any>(path.resolve(import.meta.dirname, './workers/workerGetDeals.js'), (code) =>
-      logger.warn(`Поток был закрыт с кодом ${code} (${workerTest.worker.threadId})`),
-    );
-
-    workerTest
-      .post({ test: 1 })
-      .then(console.log)
-      .catch(console.error)
-      .finally(() => {
-        workerTest.post({ event: 'stop' }).then((data) => {
-          console.log(data);
-          resolve(0);
-        });
-      });
+    try {
+      browser.initBrowser();
+    } catch (error: unknown) {
+      reject(error);
+    }
   });
 
 main()
