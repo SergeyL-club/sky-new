@@ -11,7 +11,7 @@ interface MoreDateForm extends DateForm {
   milliseconds: string;
 }
 
-const getDate = <MoreType extends 'base' | 'more' | 'format' | 'formatDate'>({
+export const getDate = <MoreType extends 'base' | 'more' | 'format' | 'formatDate'>({
   isMore,
   actualDate,
 }: {
@@ -43,4 +43,5 @@ const getDate = <MoreType extends 'base' | 'more' | 'format' | 'formatDate'>({
   return moreDateForm as any;
 };
 
-export { getDate };
+export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const random = (min: number, max: number) => Math.floor(min + Math.random() * (max + 1 - min));
