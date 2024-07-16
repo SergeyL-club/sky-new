@@ -2,3 +2,4 @@
 /logs/**/*
 /build/**/*
 /package-lock.json
+/user_data
