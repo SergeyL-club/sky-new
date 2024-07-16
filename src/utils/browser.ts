@@ -9,13 +9,13 @@ import path from 'path';
 import { readdirSync } from 'fs';
 import md5 from 'md5';
 
-interface ProxyData {
+type ProxyData = {
   url: string;
   user: string;
   pass: string;
 }
 
-interface InputSet {
+type InputSet = {
   input: ElementHandle;
   text: string;
   page?: Page;
@@ -40,10 +40,10 @@ class BrowserManager {
   }
 
   generateAuthKey = (keys: any) => {
-    let t = 'e' === keys['aKM'];
+    const t = 'e' === keys['aKM'];
     let r = Object.keys(keys).sort();
     if (t) r = r.reverse();
-    let o =
+    const o =
       r
         .map(function (t) {
           return keys[t];
@@ -64,7 +64,7 @@ class BrowserManager {
   };
 
   initParams = () => {
-    let params: any = {};
+    const params: any = {};
     if (process.argv.includes('--headless')) params['headless'] = true;
     else params['headless'] = !true;
     params['args'] = ['--no-sandbox', '--no-default-browser-check', ...(this.proxyParams && [`--proxy-server=${(<ProxyData>this.proxyParams).url}`])];
@@ -130,7 +130,7 @@ class BrowserManager {
       this.browser = await puppeteerExtra.launch(params);
 
       // set page deals
-      let url = 'https://skycrypto.me/deals';
+      const url = 'https://skycrypto.me/deals';
       let page = await this.initPage(url);
       if (!page) {
         logger.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
@@ -251,8 +251,8 @@ class BrowserManager {
       }
     }
 
-    let error = (await localPage.$(CONFIG['SELECTOR_ERROR'][0])) || (await localPage.$(CONFIG['SELECTOR_ERROR'][1])) || null;
-    let checkMain = localPage.url() == CONFIG['URL_MAIN_AUTH'] || localPage.url() == `${CONFIG['URL_MAIN_AUTH']}/`;
+    const error = (await localPage.$(CONFIG['SELECTOR_ERROR'][0])) || (await localPage.$(CONFIG['SELECTOR_ERROR'][1])) || null;
+    const checkMain = localPage.url() == CONFIG['URL_MAIN_AUTH'] || localPage.url() == `${CONFIG['URL_MAIN_AUTH']}/`;
 
     if (error || checkMain || localPage.url() != url) {
       this.isReAuth = true;

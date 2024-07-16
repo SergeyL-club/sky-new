@@ -3,7 +3,7 @@ import logger from './utils/logger.js';
 import { generateWorkerChannel } from './utils/worker.js';
 import browser from './utils/browser.js';
 
-interface WorkerData {
+type WorkerData = {
   test: number;
 }
 

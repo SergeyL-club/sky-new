@@ -1,15 +1,15 @@
-interface DateForm {
+type DateForm = {
   day: string;
   month: string;
   year: string;
 }
 
-interface MoreDateForm extends DateForm {
+type MoreDateForm = {
   hours: string;
   minutes: string;
   seconds: string;
   milliseconds: string;
-}
+} & DateForm
 
 export const getDate = <MoreType extends 'base' | 'more' | 'format' | 'formatDate'>({
   isMore,
@@ -47,11 +47,11 @@ export const timer = async (func: () => Promise<void>, ms = 200): Promise<() => 
     let isTime: boolean = true;
     resolve(() => (isTime = false));
     while (isTime) {
-      let start = Date.now();
+      const start = Date.now();
       try {
         await func();
       } catch (e) {}
-      let delta = Date.now() - start;
+      const delta = Date.now() - start;
       if (delta < ms) await delay(ms - delta);
     }
   });

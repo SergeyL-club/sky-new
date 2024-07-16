@@ -2,7 +2,7 @@ import { Worker } from 'node:worker_threads';
 
 type Callback<T> = (message: T) => void;
 
-interface Callbacks {
+type Callbacks = {
   [key: number]: Callback<any>;
 }
 
