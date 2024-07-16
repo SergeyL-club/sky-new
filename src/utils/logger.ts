@@ -19,11 +19,13 @@ const ColorsStart = {
 
 type Levels = keyof typeof customLevels;
 
-const renderTextLine = (msg: any, level: Levels) => {
+export const renderTextLine = (msg: any, level: Levels) => {
   const data = JSON.parse(msg);
   let text = '';
   text += `(${getDate({ isMore: 'format', actualDate: data['time'] })}) `;
-  text += `[${ColorsStart[level]}${level.toLocaleUpperCase()}${ColorsStart['log']}]: `;
+  text += `[PID: ${data['pid']}, `;
+  text += data['channel'] ? `CHANNEL: ${data['channel']}, ` : '';
+  text += `${ColorsStart[level]}${level.toLocaleUpperCase()}${ColorsStart['log']}]: `;
 
   text += `${data.msg}`;
   if ('err' in data) {
@@ -94,6 +96,7 @@ const logger = pino<Levels>(
   pino.multistream(steams, multistreamOpts),
 );
 
-export { renderTextLine };
+export const loggerCore = logger.child({ channel: 'CORE' });
+export const loggerDeals = logger.child({ channel: 'DEALS' });
 
-export default logger;
+export default loggerCore;
