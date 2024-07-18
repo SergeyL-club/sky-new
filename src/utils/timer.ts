@@ -28,11 +28,11 @@ class Timer {
 
   timer(hand: keyof typeof this.CYCLE_TOGGLE, func: () => void | Promise<void>) {
     if (this.CYCLE_TOGGLE[hand]) {
-      let time = Date.now();
+      const time = Date.now();
       if (func)
         Promise.resolve(func()).finally(() => {
           let timeDelay = this.CYCLE_DELAY[hand];
-          let nextTime = Date.now();
+          const nextTime = Date.now();
           if (nextTime - time >= this.CYCLE_DELAY[hand]) timeDelay = 0;
           else timeDelay = nextTime - time;
           delay(timeDelay).finally(() => this.timer(hand, func));

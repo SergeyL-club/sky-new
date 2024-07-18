@@ -325,10 +325,10 @@ export class WorkerBrowser {
     await this.injectStatic(localPage);
     timer.timer('IS_WHILE_KEYS', async () => {
       try {
-        let nextKeys = ((await localPage.evaluate('keys')) as Keys) || ({} as Keys);
+        const nextKeys = ((await localPage.evaluate('keys')) as Keys) || ({} as Keys);
         if (JSON.stringify(nextKeys) !== JSON.stringify(this.keys)) {
           this.keys = nextKeys;
-          let localAuthKey = this.generateAuthKey(nextKeys);
+          const localAuthKey = this.generateAuthKey(nextKeys);
           loggerBrowser.log(`Изменение auth key: ${this.authKey == '' ? 'null' : this.authKey}, ${localAuthKey}`);
           this.authKey = localAuthKey;
         }

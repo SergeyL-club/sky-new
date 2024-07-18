@@ -31,7 +31,7 @@ const main = () =>
         limit: 10,
       };
       const codeGet = `new Promise((resolve) => getDeals('[authKey]', ${JSON.stringify(paramsBtcOne)}).then(resolve).catch(() => resolve([])))`;
-      let result = await browser.evalute({ code: codeGet });
+      const result = await browser.evalute({ code: codeGet });
       logger.log({ obj: { btcOne: result } }, 'Результат запроса на список сделок');
     };
 
@@ -39,7 +39,7 @@ const main = () =>
       // инициализация browser (его привязка)
       logger.info('Привязка потока browser к core потоку');
       const browser = wrap<WorkerBrowser>(workerBrowserAdapter.port1);
-      // workerBrowser.once('message', next.bind(this, browser));
+      workerBrowser.once('message', next.bind(this, browser));
       workerBrowser.postMessage({ port: workerBrowserAdapter.port2 }, [workerBrowserAdapter.port2 as unknown as TransferListItem]);
     } catch (error: unknown) {
       workerBrowser.postMessage({ exit: 1 });
