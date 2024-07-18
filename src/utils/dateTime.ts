@@ -1,5 +1,3 @@
-import logger from './logger.js';
-
 type DateType = 'base' | 'more' | 'format' | 'formatDate';
 type ReturnDateType<MoreType extends DateType> = MoreType extends 'base' ? DateForm : MoreType extends 'format' | 'formatDate' ? string : MoreDateForm;
 
@@ -42,36 +40,6 @@ export const getDate = <MoreType extends DateType>({ isMore, actualDate }: { act
   }
   return moreDateForm as ReturnDateType<MoreType>;
 };
-
-export const timer = async (func: () => Promise<void>, ms = 200): Promise<() => void> =>
-  new Promise((resolve, reject) => {
-    let isTime = true;
-    let isDelay = false;
-    let countError = 0;
-    const maxCountError = 4;
-
-    resolve(() => (isTime = false));
-    while (isTime) {
-      const start = Date.now();
-      if (!isDelay) {
-        func()
-          .then()
-          .catch((error: unknown) => {
-            logger.warn({ err: error }, 'Ошибка таймера');
-            if (countError >= maxCountError) {
-              isTime = false;
-              reject(error);
-            }
-            countError++;
-          });
-      }
-      const delta = Date.now() - start;
-      if (delta < ms) {
-        isDelay = true;
-        delay(ms - delta).then(() => (isDelay = false));
-      }
-    }
-  });
 
 export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const random = (min: number, max: number) => Math.floor(min + Math.random() * (max + 1 - min));
