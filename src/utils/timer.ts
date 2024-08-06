@@ -20,10 +20,9 @@ class Timer {
   };
 
   cycle(hand: keyof typeof this.CYCLE_TOGGLE, func: () => void | Promise<void>) {
-    if (this.CYCLE_TOGGLE[hand]) {
-      func();
-    }
-    delay(this.CYCLE_DELAY[hand]).finally(() => this.cycle(hand, func));
+    if (this.CYCLE_TOGGLE[hand]) func();
+    if (this.CYCLE_TOGGLE[hand]) delay(this.CYCLE_DELAY[hand]).finally(() => this.cycle(hand, func));
+    else delay(100).finally(() => this.cycle(hand, func));
   }
 
   timer(hand: keyof typeof this.CYCLE_TOGGLE, func: () => void | Promise<void>) {
