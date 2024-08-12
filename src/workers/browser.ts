@@ -1,27 +1,40 @@
-import type { InputSet, Keys, Params, ProxyData } from '../../types/workers/browser.type.js';
-import stealsPlugin from 'puppeteer-extra-plugin-stealth';
+import type { Browser, Page } from 'puppeteer';
 import type { VanillaPuppeteer } from 'puppeteer-extra';
+import type { InputSet, Keys, Params, ProxyData } from '../../types/workers/browser.type.js';
+import type { Remote } from 'comlink';
+import type WorkerServer from './server.js';
+import type WorkerRedis from './redis.js';
+
+import stealsPlugin from 'puppeteer-extra-plugin-stealth';
 import { delay, random } from '../utils/dateTime.js';
 import { loggerBrowser } from '../utils/logger.js';
 import { parentPort } from 'node:worker_threads';
 import { PuppeteerExtra } from 'puppeteer-extra';
-import type { Browser, Page } from 'puppeteer';
 import * as CONFIG from '../config.js';
 import { readdirSync } from 'node:fs';
 import timer from '../utils/timer.js';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { expose } from 'comlink';
+import { expose, wrap } from 'comlink';
 import md5 from 'md5';
 
-export class WorkerBrowser {
+type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
+
+// local config in worker
+const LOCAL_CONFIG = { ...CONFIG };
+
+// channels
+let redis: Remote<WorkerRedis> | null = null;
+let server: Remote<WorkerServer> | null = null;
+
+class WorkerBrowser {
   private static instance: WorkerBrowser;
 
   // init data
   private proxyParams: ProxyData | string;
 
   // local params
-  public isReAuth: boolean;
+  private isReAuth: boolean;
 
   // browser data
   private keys: Keys;
@@ -102,7 +115,7 @@ export class WorkerBrowser {
   };
 
   injectStatic = async (page: Page, socket: boolean = true) => {
-    // await page.waitForNavigation({ timeout: CONFIG['WAIT_TIMEOUT'], waitUntil: CONFIG['WAIT_UNTIL'] });
+    // await page.waitForNavigation({ timeout: LOCAL_CONFIG['WAIT_TIMEOUT'], waitUntil: LOCAL_CONFIG['WAIT_UNTIL'] });
     const files: string[] = readdirSync(resolve(import.meta.dirname, `../../statics`));
 
     for (let index = 0; index < files.length; index++) {
@@ -203,7 +216,7 @@ export class WorkerBrowser {
   };
 
   goto = async (page: Page, url: string) => {
-    await page.goto(url, { timeout: CONFIG['WAIT_TIMEOUT'], waitUntil: CONFIG['WAIT_UNTIL'] });
+    await page.goto(url, { timeout: LOCAL_CONFIG['WAIT_TIMEOUT'], waitUntil: LOCAL_CONFIG['WAIT_UNTIL'] });
   };
 
   inputSet = async ({ input, page, text }: InputSet) => {
@@ -246,13 +259,13 @@ export class WorkerBrowser {
       }
     }
 
-    const error = (await localPage.$(CONFIG['SELECTOR_ERROR'][0])) || (await localPage.$(CONFIG['SELECTOR_ERROR'][1])) || null;
-    const checkMain = localPage.url() == CONFIG['URL_MAIN_AUTH'] || localPage.url() == `${CONFIG['URL_MAIN_AUTH']}/`;
+    const error = (await localPage.$(LOCAL_CONFIG['SELECTOR_ERROR'][0])) || (await localPage.$(LOCAL_CONFIG['SELECTOR_ERROR'][1])) || null;
+    const checkMain = localPage.url() == LOCAL_CONFIG['URL_MAIN_AUTH'] || localPage.url() == `${LOCAL_CONFIG['URL_MAIN_AUTH']}/`;
 
     if (error || checkMain || localPage.url() != url) {
       this.isReAuth = true;
       loggerBrowser.log('Не авторизирован, попытка авторизироваться');
-      await delay(random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']));
+      await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
       if (!(await this.auth(localPage))) return null;
       loggerBrowser.log('Переходит на нужную ссылку');
       await this.goto(localPage, url);
@@ -261,51 +274,51 @@ export class WorkerBrowser {
 
     loggerBrowser.log('Завершили проверку авторизации');
 
-    await delay(random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']));
+    await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
     return page;
   };
 
   auth = async (page: Page) => {
     loggerBrowser.log('Переход на главную страницу');
-    await this.goto(page, CONFIG['URL_MAIN_AUTH']);
+    await this.goto(page, LOCAL_CONFIG['URL_MAIN_AUTH']);
 
-    const btnAuth = (await page.$(CONFIG['SELECTOR_AUTH_FORM'][0])) || (await page.$(CONFIG['SELECTOR_AUTH_FORM'][1])) || null;
+    const btnAuth = (await page.$(LOCAL_CONFIG['SELECTOR_AUTH_FORM'][0])) || (await page.$(LOCAL_CONFIG['SELECTOR_AUTH_FORM'][1])) || null;
     if (!btnAuth) {
       loggerBrowser.warn('Неудалось найти кнопку входа (главная страница)');
       return false;
     }
-    await btnAuth.click({ delay: random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']) });
+    await btnAuth.click({ delay: random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']) });
 
-    let inputEmail = (await page.$(CONFIG['SELECTOR_INPUT_EMAIL'])) || null;
-    let inputPassword = (await page.$(CONFIG['SELECTOR_INPUT_PASSWORD'])) || null;
+    let inputEmail = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_EMAIL'])) || null;
+    let inputPassword = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_PASSWORD'])) || null;
     if (!inputEmail || !inputPassword) {
-      const uriAuth = (await page.$(CONFIG['SELECTOR_URL_AUTH'][0])) || (await page.$(CONFIG['SELECTOR_URL_AUTH'][1])) || null;
+      const uriAuth = (await page.$(LOCAL_CONFIG['SELECTOR_URL_AUTH'][0])) || (await page.$(LOCAL_CONFIG['SELECTOR_URL_AUTH'][1])) || null;
       if (!uriAuth) {
         loggerBrowser.warn('Не было найдена "a" для открытия input password');
         return false;
       }
-      await uriAuth.click({ delay: random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']) });
+      await uriAuth.click({ delay: random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']) });
     }
 
-    await delay(CONFIG['DELAY_AUTH']);
-    inputEmail = (await page.$(CONFIG['SELECTOR_INPUT_EMAIL'])) || null;
-    inputPassword = (await page.$(CONFIG['SELECTOR_INPUT_PASSWORD'])) || null;
+    await delay(LOCAL_CONFIG['DELAY_AUTH']);
+    inputEmail = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_EMAIL'])) || null;
+    inputPassword = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_PASSWORD'])) || null;
     if (!inputEmail || !inputPassword) {
       loggerBrowser.warn('Даже после нажатия на "a" для открытия input password он так и не появлися');
       return false;
     }
-    await delay(random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']));
-    await this.inputSet({ input: inputEmail, text: CONFIG['EMAIL'], page });
-    await delay(random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']));
-    await this.inputSet({ input: inputPassword, text: CONFIG['PASSWORD'], page });
+    await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
+    await this.inputSet({ input: inputEmail, text: LOCAL_CONFIG['EMAIL'], page });
+    await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
+    await this.inputSet({ input: inputPassword, text: LOCAL_CONFIG['PASSWORD'], page });
 
-    const btnAuthForm = (await page.$(CONFIG['SELECTOR_BTN_AUTH'][0])) || (await page.$(CONFIG['SELECTOR_BTN_AUTH'][1])) || null;
+    const btnAuthForm = (await page.$(LOCAL_CONFIG['SELECTOR_BTN_AUTH'][0])) || (await page.$(LOCAL_CONFIG['SELECTOR_BTN_AUTH'][1])) || null;
     if (!btnAuthForm) {
       loggerBrowser.warn('Неудалось найти кнопку входа (форма)');
       return false;
     }
-    await btnAuthForm.click({ delay: random(CONFIG['DELAY_EVENT_MIN'], CONFIG['DELAY_EVENT_MAX']) });
-    await delay(CONFIG['DELAY_AUTH']);
+    await btnAuthForm.click({ delay: random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']) });
+    await delay(LOCAL_CONFIG['DELAY_AUTH']);
 
     return true;
   };
@@ -361,20 +374,23 @@ export class WorkerBrowser {
   };
 }
 
-const workerBrowser = new WorkerBrowser();
-workerBrowser.initBrowser().then((code) => {
-  workerBrowser.updateKeys().then(() => parentPort?.postMessage(code));
+const worker = new WorkerBrowser();
+
+parentPort?.on('message', async (message) => {
+  if ('command' in message)
+    switch (message.command as ServerCommands) {
+      case 'redis':
+        redis = wrap<WorkerRedis>(message['port']);
+        break;
+      case 'server':
+        server = wrap<WorkerServer>(message['port']);
+        break;
+      case 'connect':
+        expose(worker, message['port']);
+        break;
+      case 'exit':
+        process.exit(message['code']);
+    }
 });
 
-parentPort?.once('message', (message) => {
-  const { port } = message;
-  expose(workerBrowser, port);
-});
-
-parentPort?.on('message', async (msg) => {
-  if ('exit' in msg) {
-    timer.CYCLE_TOGGLE.IS_WHILE_KEYS = false;
-    await workerBrowser.closeBrowser();
-    process.exit(1);
-  }
-});
+export default WorkerBrowser;
