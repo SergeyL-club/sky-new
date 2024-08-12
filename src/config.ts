@@ -1,6 +1,13 @@
 import type { WaitForOptions } from 'puppeteer';
-
 export type Channels = 'CORE' | 'BROWSER' | 'CALC';
+
+// конфиг для клиента
+export const MTS_PORT: number = -1;
+export const QIWI_PORT: number = -1;
+export const PAYEER_PORT: number = -1;
+export const PAID_SECRET: string = 'm0nEy$ecrET';
+export const PAID_URL: string = 'http://51.68.137.132';
+export const TG_ID: number = 280212417;
 
 // порт запуска на сервере (запросы по этому порту отправлять)
 export const PORT: number = 13004;
