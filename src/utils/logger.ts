@@ -98,6 +98,7 @@ const logger = pino<Levels>(
 
 export const loggerCore = logger.child({ channel: 'CORE' });
 export const loggerBrowser = logger.child({ channel: 'BROWSER' });
-export const loggerCalc = logger.child({ channel: 'CALC' });
+export const loggerServer = logger.child({ channel: 'SERVER' });
+export const loggerRedis = logger.child({ channel: 'REDIS' });
 
 export default loggerCore;
