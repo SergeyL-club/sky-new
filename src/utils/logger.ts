@@ -4,11 +4,13 @@ import { getDate } from './dateTime.js';
 import { closeSync, existsSync, mkdirSync, openSync, writeSync } from 'fs';
 
 const customLevels = {
-  log: 1,
-  info: 2,
-  warn: 3,
-  error: 4,
+  log: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
 };
+
+export const reversCustomLevels = ['log', 'info', 'warn', 'error'];
 
 const ColorsStart = {
   log: '\x1b[0m',
@@ -17,19 +19,28 @@ const ColorsStart = {
   error: '\x1b[31m',
 };
 
-type Levels = keyof typeof customLevels;
+const ColorsStartHtml = {
+  log: '<span style="color: #fff">',
+  info: '<span style="color: #56ff00">',
+  warn: '<span style="color: #ffeb00">',
+  error: '<span style="color: #f00">',
+};
 
-export const renderTextLine = <T extends string>(msg: T, level: Levels) => {
-  const data = JSON.parse(msg);
-  let text = '';
+export type Levels = keyof typeof customLevels;
+
+export const renderTextLine = <T extends string>(msg: T, level: Levels, html = false) => {
+  const data = typeof msg === 'string' ? JSON.parse(msg) : msg;
+  const colorStart = html ? ColorsStartHtml[level] : ColorsStart[level];
+  const colorEnd = html ? '</span>' : ColorsStart['log'];
+  let text = html ? '<pre style="margin: 0; padding: 0">' + ColorsStartHtml['log'] : '';
   text += `(${getDate({ isMore: 'format', actualDate: data['time'] })}) `;
   text += `[PID: ${data['pid']}, `;
   text += data['channel'] ? `CHANNEL: ${data['channel']}, ` : '';
-  text += `${ColorsStart[level]}${level.toLocaleUpperCase()}${ColorsStart['log']}]: `;
+  text += `${colorStart}${level.toUpperCase()}${colorEnd}]: `;
 
   text += `${data.msg}`;
   if ('err' in data) {
-    text += `\n${ColorsStart[level]}Message${ColorsStart['log']}: ${data['err']['message']}`;
+    text += `\n${colorStart}Message${colorEnd}: ${data['err']['message']}`;
     if ('stack' in data['err']) {
       let stack = data['err']['stack'];
       stack = stack.split('\n');
@@ -40,11 +51,12 @@ export const renderTextLine = <T extends string>(msg: T, level: Levels) => {
   }
 
   if ('obj' in data) {
-    text += `\n${ColorsStart[level]}Object${ColorsStart['log']}: `;
+    text += `\n${colorStart}Object${colorEnd}: `;
     text += `${JSON.stringify(data['obj'], null, 1)}`;
   }
 
-  text += '\n';
+  if (!html) text += '\n';
+  if (html) text += '</pre></span>';
   return text;
 };
 
@@ -56,7 +68,7 @@ const destinationStreamFile = (level: string): DestinationStream => ({
     const filePath = `${dirPath}/[${getDate({ isMore: 'formatDate', actualDate: data['time'] })}]${level}.log`;
 
     const fd = openSync(filePath, 'a');
-    writeSync(fd, msg, null, 'utf-8');
+    writeSync(fd, `$$$` + msg, null, 'utf-8');
     closeSync(fd);
   },
 });
@@ -68,10 +80,10 @@ const destinationStreamConsole = (level: Levels): DestinationStream => ({
 });
 
 const steams: StreamEntry<Levels>[] = [
-  { level: 'log', stream: destinationStreamFile('cosnole_all') },
-  { level: 'info', stream: destinationStreamFile('cosnole_all') },
-  { level: 'warn', stream: destinationStreamFile('cosnole_all') },
-  { level: 'error', stream: destinationStreamFile('cosnole_all') },
+  { level: 'log', stream: destinationStreamFile('console_all') },
+  { level: 'info', stream: destinationStreamFile('console_all') },
+  { level: 'warn', stream: destinationStreamFile('console_all') },
+  { level: 'error', stream: destinationStreamFile('console_all') },
   { level: 'log', stream: destinationStreamFile('console_log') },
   { level: 'info', stream: destinationStreamFile('console_info') },
   { level: 'warn', stream: destinationStreamFile('console_warn') },

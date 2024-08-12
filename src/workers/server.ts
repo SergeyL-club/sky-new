@@ -10,9 +10,12 @@ import * as CONFIG from '../config.js';
 import { fastify } from 'fastify';
 import { expose, wrap } from 'comlink';
 import { loggerServer } from '../utils/logger.js';
+import { resolve } from 'node:path';
+import { getDate } from '../utils/dateTime.js';
+import { getLogs, readLogs } from '../utils/htmlLog.js';
 
 type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
-type Events = 'config-set' | 'config-get';
+type Events = 'config-set' | 'config-get' | 'logs';
 
 type Callback = (request: FastifyRequest, reply: FastifyReply) => void | Promise<void>;
 type Listen = {
@@ -30,7 +33,13 @@ type RequestQuerySetConfig = {
   value: unknown;
 };
 
-type RequestQuery = RequestQueryGetConfig | RequestQuerySetConfig | { command: undefined };
+type RequestQueryGetLog = {
+  command: 'logs';
+  limit?: number;
+  type?: 'info' | 'log' | 'warn' | 'error';
+};
+
+type RequestQuery = RequestQueryGetConfig | RequestQuerySetConfig | RequestQueryGetLog | { command: undefined };
 
 // channels
 let redis: Remote<WorkerRedis> | null = null;
@@ -122,6 +131,16 @@ worker.on('config-set', async (request, reply) => {
   if (!data) return reply.status(400).send(`Значение не соответсвует CONFIG[${query.name}]: ${query.value} (${typeof query.value})`);
   const dataNow = (await redis?.getConfig(query.name)) ?? CONFIG[query.name];
   return reply.status(200).send(`Значение CONFIG[${query.name}]: ${JSON.stringify(dataNow)}`);
+});
+
+worker.on('logs', async (request, reply) => {
+  const query: RequestQueryGetLog = request.query as RequestQueryGetLog;
+  const date = getDate({ isMore: 'formatDate' });
+  const fs = resolve(import.meta.dirname, `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
+  reply.type('text/html');
+
+  const data = getLogs(readLogs(fs, query.limit ?? 10000000000000000));
+  return reply.status(200).send(data);
 });
 
 parentPort?.on('message', async (message) => {
