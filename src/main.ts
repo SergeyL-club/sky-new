@@ -1,55 +1,94 @@
 import path from 'path';
 import { wrap } from 'comlink';
-import type { Remote } from 'comlink';
 import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import type { TransferListItem } from 'node:worker_threads';
-import type { WorkerBrowser } from './workers/browser.js';
-import { delay } from './utils/dateTime.js';
+import type WorkerRedis from './workers/redis.js';
+import type WorkerBrowser from './workers/browser.js';
+import type WorkerServer from './workers/server.js';
 
 const main = () =>
-  new Promise<number>((_, reject) => {
-    // создание потока на browser
-    logger.info('Создание отдельного потока для browser');
+  new Promise<number>((_) => {
+    // workers
+    logger.log(`Запуск потоков`);
+    const workerRedis = new Worker(path.resolve(import.meta.dirname, './workers/redis.js'));
     const workerBrowser = new Worker(path.resolve(import.meta.dirname, './workers/browser.js'));
-    const workerBrowserAdapter = new MessageChannel();
+    const workerServer = new Worker(path.resolve(import.meta.dirname, './workers/server.js'));
 
-    // задать отключение нужных параметров при неизвестном выходе процесса (его закрытие, пример: когда дебаг поток на браузер остается если его принудильно закрыть)
+    // adapters main
+    logger.log(`Создание адаптеров`);
+    const workerRedisAdapter = new MessageChannel();
+    const workerBrowserAdapter = new MessageChannel();
+    const workerServerAdapter = new MessageChannel();
+
+    // adapters other
+    const workerRedisBrowserAdapter = new MessageChannel();
+    const workerBrowserRedisAdapter = new MessageChannel();
+
+    const workerRedisServerAdapter = new MessageChannel();
+    const workerServerRedisAdapter = new MessageChannel();
+
+    const workerBrowserServerAdapter = new MessageChannel();
+    const workerServerBrowserAdapter = new MessageChannel();
+
+    // connects main
+    logger.log(`Подключение адаптеров (основные)`);
+    workerRedis.postMessage({ command: 'connect', port: workerRedisAdapter.port2 }, [workerRedisAdapter.port2 as unknown as TransferListItem]);
+    workerBrowser.postMessage({ command: 'connect', port: workerBrowserAdapter.port2 }, [workerBrowserAdapter.port2 as unknown as TransferListItem]);
+    workerServer.postMessage({ command: 'connect', port: workerServerAdapter.port2 }, [workerServerAdapter.port2 as unknown as TransferListItem]);
+
+    // connects other
+    logger.log(`Подключение адаптеров (redis - browser)`);
+    workerRedis.postMessage({ command: 'connect', port: workerRedisBrowserAdapter.port2 }, [workerRedisBrowserAdapter.port2 as unknown as TransferListItem]);
+    workerBrowser.postMessage({ command: 'connect', port: workerBrowserRedisAdapter.port2 }, [workerBrowserRedisAdapter.port2 as unknown as TransferListItem]);
+
+    logger.log(`Подключение адаптеров (redis - server)`);
+    workerRedis.postMessage({ command: 'connect', port: workerRedisServerAdapter.port2 }, [workerRedisServerAdapter.port2 as unknown as TransferListItem]);
+    workerServer.postMessage({ command: 'connect', port: workerServerRedisAdapter.port2 }, [workerServerRedisAdapter.port2 as unknown as TransferListItem]);
+
+    logger.log(`Подключение адаптеров (server - browser)`);
+    workerBrowser.postMessage({ command: 'connect', port: workerBrowserServerAdapter.port2 }, [workerBrowserServerAdapter.port2 as unknown as TransferListItem]);
+    workerServer.postMessage({ command: 'connect', port: workerServerBrowserAdapter.port2 }, [workerServerBrowserAdapter.port2 as unknown as TransferListItem]);
+
+    // exposes main
+    logger.log(`Создание роутеров (основные)`);
+    const redis = wrap<WorkerRedis>(workerRedisAdapter.port1);
+    const browser = wrap<WorkerBrowser>(workerBrowserAdapter.port1);
+    const server = wrap<WorkerServer>(workerServerAdapter.port1);
+
+    // exposes other
+    logger.log(`Создание роутеров (redis - browser)`);
+    workerRedis.postMessage({ command: 'browser', port: workerBrowserRedisAdapter.port1 }, [workerBrowserRedisAdapter.port1 as unknown as TransferListItem]);
+    workerBrowser.postMessage({ command: 'redis', port: workerRedisBrowserAdapter.port1 }, [workerRedisBrowserAdapter.port1 as unknown as TransferListItem]);
+
+    logger.log(`Создание роутеров (redis - server)`);
+    workerRedis.postMessage({ command: 'server', port: workerServerRedisAdapter.port1 }, [workerServerRedisAdapter.port1 as unknown as TransferListItem]);
+    workerServer.postMessage({ command: 'redis', port: workerRedisServerAdapter.port1 }, [workerRedisServerAdapter.port1 as unknown as TransferListItem]);
+
+    logger.log(`Создание роутеров (server - browser)`);
+    workerBrowser.postMessage({ command: 'server', port: workerServerBrowserAdapter.port1 }, [workerServerBrowserAdapter.port1 as unknown as TransferListItem]);
+    workerServer.postMessage({ command: 'borwser', port: workerBrowserServerAdapter.port1 }, [workerBrowserServerAdapter.port1 as unknown as TransferListItem]);
+
+    // exit workers
+    logger.log(`Создание callback для отключения потоков при выходе процесса`);
     process.on('exit', () => {
-      workerBrowser.postMessage({ exit: 1 });
+      workerBrowser.postMessage({ command: 'exit', code: 1 });
+      workerServer.postMessage({ command: 'exit', code: 1 });
+      workerRedis.postMessage({ command: 'exit', code: 1 });
     });
 
-    // код после запуска browser
-    const next = async (browser: Remote<WorkerBrowser>, code: boolean) => {
-      if (!code) new Error('Не удалось инициализировать browser');
-      browser.loop();
-      await delay(20000);
-      const paramsBtcOne = {
-        symbol: 'btc',
-        currency: 'rub',
-        offset: 0,
-        limit: 10,
-      };
-      const codeGet = `new Promise((resolve) => getDeals('[authKey]', ${JSON.stringify(paramsBtcOne)}).then(resolve).catch(() => resolve([])))`;
-      const result = await browser.evalute({ code: codeGet });
-      logger.log({ obj: { btcOne: result } }, 'Результат запроса на список сделок');
-    };
-
     try {
-      // инициализация browser (его привязка)
-      logger.info('Привязка потока browser к core потоку');
-      const browser = wrap<WorkerBrowser>(workerBrowserAdapter.port1);
-      workerBrowser.once('message', next.bind(this, browser));
-      workerBrowser.postMessage({ port: workerBrowserAdapter.port2 }, [workerBrowserAdapter.port2 as unknown as TransferListItem]);
+      redis.initClient().then(() => {
+        server.init();
+      });
+      // logger.log(`Инициализация браузера`);
+      // browser.initBrowser().then(() => logger.log(`Инициализация браузера завершена`));
     } catch (error: unknown) {
-      workerBrowser.postMessage({ exit: 1 });
-      reject(error);
+      logger.error(error);
     }
   });
 
-main()
-  .then((code) => process.exit(code))
-  .catch((error: unknown) => {
-    logger.error(error);
-    process.exit(1);
-  });
+main().catch((error: unknown) => {
+  logger.error(error);
+  process.exit(1);
+});
