@@ -1,11 +1,61 @@
-import path from 'path';
-import { wrap } from 'comlink';
-import logger from './utils/logger.js';
-import { Worker } from 'node:worker_threads';
 import type { TransferListItem } from 'node:worker_threads';
 import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
+import type { Remote } from 'comlink';
+import type { Deal } from './workers/redis.js';
+
+import path from 'path';
+import { wrap } from 'comlink';
+import logger, { loggerBrowser } from './utils/logger.js';
+import { Worker } from 'node:worker_threads';
+import { pollingDeals } from './utils/timer.js';
+
+const getDeals = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) => {
+  logger.info(`Получение списка сделок`);
+  const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
+  const code = (data: ReturnType<typeof params>) => `new Promise((resolve) => getDeals('[authKey]', ${JSON.stringify(data)}).then(resolve).catch(() => resolve([])))`;
+
+  const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
+  const usdtLimit = await redis.getConfig('POLLING_DEALS_LIMIT_USDT');
+  const btcParams = params('btc', 'rub', 0, btcLimit as number);
+  const usdtParams = params('usdt', 'rub', 0, usdtLimit as number);
+
+  const btcIs = await redis.getConfig('POLLING_DEALS_BTC');
+  let btcDeals = [] as Deal[];
+  if (btcIs) {
+    logger.info(`Получение списка с данными ${JSON.stringify(btcParams)}`);
+    btcDeals = (await browser.evalute({ code: code(btcParams) })) as Deal[];
+    logger.log(`Получено ${btcDeals.length}`);
+  }
+
+  const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
+  let usdtDeals = [] as Deal[];
+  if (usdtIs) {
+    logger.info(`Получение списка с данными ${JSON.stringify(usdtParams)}`);
+    usdtDeals = (await browser.evalute({ code: code(usdtParams) })) as Deal[];
+    logger.log(`Получено ${usdtDeals.length}`);
+  }
+
+  const newDeals = [] as Deal[];
+  const allDeals = btcDeals.concat(usdtDeals);
+  logger.info(`Общее количество сделок ${allDeals.length}`);
+  for (let indexDeal = 0; indexDeal < allDeals.length; indexDeal++) {
+    const deal = allDeals[indexDeal];
+    const oldDeal = await redis.getDeal(deal.id);
+    if (!oldDeal) newDeals.push(deal);
+  }
+  logger.info(`Количество новых сделок ${newDeals.length}`);
+  logger.log(`Обновление списка в памяти`);
+  await redis.clearDeals();
+  await redis.setDeals(allDeals);
+
+  logger.log(`Отправляем на обработку новые сделки`);
+  for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
+    const deal = newDeals[indexNewDeal];
+    // TODO: обработка deal
+  }
+};
 
 const main = () =>
   new Promise<number>((_) => {
@@ -81,8 +131,12 @@ const main = () =>
       redis.initClient().then(() => {
         server.init();
       });
-      // logger.log(`Инициализация браузера`);
-      // browser.initBrowser().then(() => logger.log(`Инициализация браузера завершена`));
+      browser.initBrowser().then(() => {
+        browser.updateKeys().then(() => {
+          loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+          pollingDeals(redis, getDeals.bind(null, redis, browser));
+        });
+      });
     } catch (error: unknown) {
       logger.error(error);
     }

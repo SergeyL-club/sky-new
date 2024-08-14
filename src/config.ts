@@ -25,7 +25,7 @@ export const URL_MAIN_AUTH: string = 'https://skycrypto.me'; // ссылка п�
 export const URL_DEALS: string = 'https://skycrypto.me/deals'; // ссылка где находятся сделки
 export const DELAY_EVENT_MIN: number = 50; // минимальная задержка действия (пример: клик, ожидание после действия)
 export const DELAY_EVENT_MAX: number = 100; // максимальная задержка действия (пример: клик, ожидание после действия)
-export const DELAY_AUTH: number = 2000; // ожидание автоматического перехода сайтом, переключение формы с поролем
+export const DELAY_AUTH: number = 5000; // ожидание автоматического перехода сайтом, переключение формы с поролем
 
 // селекторы для авторизации (если список - 0:ru 1:en)
 export const SELECTOR_INPUT_EMAIL: string = '::-p-xpath(//input[@name="email"])';
@@ -35,22 +35,17 @@ export const SELECTOR_AUTH_FORM: [string, string] = ['::-p-xpath(//button[text()
 export const SELECTOR_URL_AUTH: [string, string] = ['::-p-xpath(//a[text()="Войти"])', '::-p-xpath(//a[text()="Enter"])']; // селекторы на ссылку для открытия пароля в форме
 export const SELECTOR_BTN_AUTH: [string, string] = ['::-p-xpath(//button[text()="Войти"])', '::-p-xpath(//button[text()="Enter"])']; // селекторы на кнопку входа уже в форме
 
-// конфиг цикла deals
-export const DELAY_UPDATE_DEALS: number = 10000; // начальная задержка цикла deals
-export const IS_WHILE_DEALS: boolean = true; // начальное значение запуска цикла deals (true - работает, false - не работает)
+// конфиг обновлений циклов
+export const POLLING_DEALS: boolean = true;
+export const POLLING_DEALS_BTC: boolean = true;
+export const POLLING_DEALS_USDT: boolean = true;
+export const DELAY_POLLING_DEALS: number = 10000;
+export const POLLING_DEALS_LIMIT_BTC: number = 20;
+export const POLLING_DEALS_LIMIT_USDT: number = 20;
 
-// конфиг цикла keys
-export const DELAY_UPDATE_KEYS: number = 1000; // начальная задержка цикла keys (сокет который дает значения для генерации auth key)
-export const IS_WHILE_KEYS: boolean = true; // начальное значение запуска цикла keys (true - работает, false - не работает)
-
-// конфиг цикла loop calc
-export const DELAY_LOOP_CALC: number = 1000; // периодичность loop
-export const IS_LOOP_CALC: boolean = true; // начальное значение запуска loop calc
-
-// конфиг цикла loop browser
-export const DELAY_LOOP_BROWSER: number = 1000; // периодичность loop
-export const IS_LOOP_BROWSER: boolean = true; // начальное значение запуска loop browser
-
-// конфиг цикла loop core (main)
-export const DELAY_LOOP_CORE: number = 1000; // периодичность loop
-export const IS_LOOP_CORE: boolean = true; // начальное значение запуска loop core
+// конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
+export const DATA_PATH_REDIS: string = 'sky';
+export const DATA_PATH_REDIS_CONFIG: string = `${DATA_PATH_REDIS}:configs`;
+export const DATA_PATH_REDIS_DEALS: string = `${DATA_PATH_REDIS}:deals`;
+export const URL_REDIS: string = 'redis://127.0.0.1:6379';
+export const DB_REDIS: number = 0;

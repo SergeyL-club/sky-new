@@ -325,35 +325,46 @@ class WorkerBrowser {
     await this.browser?.close();
   };
 
-  updateKeys = async (page?: Page) => {
-    loggerBrowser.log('Запуск сокета для обновления keys и auth key');
-    const localPage = page ?? this.deals;
-    if (!localPage) {
-      loggerBrowser.warn('Не удалось запустить socket для обновления keys (auth key), т.к. нету page');
-      return;
-    }
+  updateKeys = async (page?: Page) =>
+    new Promise((resolve) => {
+      loggerBrowser.log('Запуск сокета для обновления keys и auth key');
+      const localPage = page ?? this.deals;
+      if (!localPage) {
+        loggerBrowser.warn('Не удалось запустить socket для обновления keys (auth key), т.к. нету page');
+        return;
+      }
 
-    await this.injectStatic(localPage);
-    await localPage.exposeFunction('keysSocketUpdate', (data: string) => {
-      this.keys = JSON.parse(data);
-      loggerBrowser.log(`update keys: ${data}`);
+      this.injectStatic(localPage).then(() => {
+        let first = true;
+        localPage
+          .exposeFunction('keysSocketUpdate', (data: string) => {
+            this.keys = JSON.parse(data);
+            loggerBrowser.log(`Обновление keys: ${data}`);
+            this.authKey = this.generateAuthKey();
+            loggerBrowser.log(`Обновление authKeys: ${this.authKey}`);
+            if (first) {
+              first = false;
+              resolve(true);
+            }
+          })
+          .then(() => {
+            localPage.evaluate(() => {
+              const socket = io('wss://ws.skycrypto.net', {
+                transports: ['websocket'],
+                path: '/sky-socket',
+              });
+
+              socket.on('update codedata', (data: string) => {
+                (window as unknown as WindowCustom).keysSocketUpdate(data);
+              });
+
+              socket.on('connect', () => {
+                socket.emit('2probe');
+              });
+            });
+          });
+      });
     });
-
-    localPage.evaluate(() => {
-      const socket = io('wss://ws.skycrypto.net', {
-        transports: ['websocket'],
-        path: '/sky-socket',
-      });
-
-      socket.on('update codedata', (data: string) => {
-        (window as unknown as WindowCustom).keysSocketUpdate(data);
-      });
-
-      socket.on('connect', () => {
-        socket.emit('2probe');
-      });
-    });
-  };
 
   evalute = async <Type>({ page, code }: { page?: Page; code: string }) => {
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
