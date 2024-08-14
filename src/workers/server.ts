@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Remote } from 'comlink';
 import type WorkerRedis from './redis.js';
-import type WorkerBrowser from './browser.js';
+// import type WorkerBrowser from './browser.js';
 
 // import md5 from 'md5';
 // import { ApiRequest } from '../utils/paid.js';
@@ -43,7 +43,7 @@ type RequestQuery = RequestQueryGetConfig | RequestQuerySetConfig | RequestQuery
 
 // channels
 let redis: Remote<WorkerRedis> | null = null;
-let browser: Remote<WorkerBrowser> | null = null;
+// let browser: Remote<WorkerBrowser> | null = null;
 
 class WorkerServer {
   private static instance: WorkerServer;
@@ -150,7 +150,7 @@ parentPort?.on('message', async (message) => {
         redis = wrap<WorkerRedis>(message['port']);
         break;
       case 'browser':
-        browser = wrap<WorkerBrowser>(message['port']);
+        // browser = wrap<WorkerBrowser>(message['port']);
         break;
       case 'connect':
         expose(worker, message['port']);

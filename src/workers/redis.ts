@@ -1,9 +1,9 @@
 import type { PuppeteerLifeCycleEvent } from 'puppeteer';
-import type WorkerBrowser from './browser.js';
-import type WorkerServer from './server.js';
-import type { Remote } from 'comlink';
+// import type WorkerBrowser from './browser.js';
+// import type WorkerServer from './server.js';
+// import type { Remote } from 'comlink';
 
-import { expose, wrap } from 'comlink';
+import { expose } from 'comlink';
 import * as CONFIG from '../config.js';
 import { parentPort } from 'node:worker_threads';
 import { createClient, RedisClientType } from 'redis';
@@ -33,8 +33,8 @@ export type Deal = {
 export type KeyOfDeal = keyof Deal;
 
 // channels
-let browser: Remote<WorkerBrowser> | null = null;
-let server: Remote<WorkerServer> | null = null;
+// let browser: Remote<WorkerBrowser> | null = null;
+// let server: Remote<WorkerServer> | null = null;
 
 class WorkerRedis {
   private static instance: WorkerRedis;
@@ -218,10 +218,10 @@ parentPort?.on('message', async (message) => {
   if ('command' in message)
     switch (message.command as ServerCommands) {
       case 'browser':
-        browser = wrap<WorkerBrowser>(message['port']);
+        // browser = wrap<WorkerBrowser>(message['port']);
         break;
       case 'server':
-        server = wrap<WorkerServer>(message['port']);
+        // server = wrap<WorkerServer>(message['port']);
         break;
       case 'connect':
         expose(worker, message['port']);

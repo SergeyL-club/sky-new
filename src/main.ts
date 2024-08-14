@@ -61,13 +61,13 @@ const getDeals = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
   if (newDeals.length > 0) logger.log(`Отправляем на обработку новые сделки`);
   for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
-    const deal = newDeals[indexNewDeal];
+    // const deal = newDeals[indexNewDeal];
     // TODO: обработка deal
   }
 };
 
 const main = () =>
-  new Promise<number>((_) => {
+  new Promise<number>(() => {
     // workers
     logger.log(`Запуск потоков`);
     const workerRedis = new Worker(path.resolve(import.meta.dirname, './workers/redis.js'));

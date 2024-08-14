@@ -1,9 +1,9 @@
 import type { Browser, Page } from 'puppeteer';
 import type { VanillaPuppeteer } from 'puppeteer-extra';
 import type { InputSet, Keys, Params, ProxyData } from '../../types/workers/browser.type.js';
-import type { Remote } from 'comlink';
-import type WorkerServer from './server.js';
-import type WorkerRedis from './redis.js';
+// import type { Remote } from 'comlink';
+// import type WorkerServer from './server.js';
+// import type WorkerRedis from './redis.js';
 
 import stealsPlugin from 'puppeteer-extra-plugin-stealth';
 import { delay, random } from '../utils/dateTime.js';
@@ -14,7 +14,7 @@ import * as CONFIG from '../config.js';
 import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { expose, wrap } from 'comlink';
+import { expose } from 'comlink';
 import md5 from 'md5';
 
 type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
@@ -26,8 +26,8 @@ type WindowCustom = {
 const LOCAL_CONFIG = { ...CONFIG };
 
 // channels
-let redis: Remote<WorkerRedis> | null = null;
-let server: Remote<WorkerServer> | null = null;
+// let redis: Remote<WorkerRedis> | null = null;
+// let server: Remote<WorkerServer> | null = null;
 
 class WorkerBrowser {
   private static instance: WorkerBrowser;
@@ -395,10 +395,10 @@ parentPort?.on('message', async (message) => {
   if ('command' in message)
     switch (message.command as ServerCommands) {
       case 'redis':
-        redis = wrap<WorkerRedis>(message['port']);
+        // redis = wrap<WorkerRedis>(message['port']);
         break;
       case 'server':
-        server = wrap<WorkerServer>(message['port']);
+        // server = wrap<WorkerServer>(message['port']);
         break;
       case 'connect':
         expose(worker, message['port']);
