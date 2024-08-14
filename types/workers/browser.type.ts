@@ -1,4 +1,4 @@
-import type { ElementHandle, Page, Browser } from 'puppeteer';
+import type { ElementHandle, Page } from 'puppeteer';
 
 export type Keys = {
   [key: string]: string;
