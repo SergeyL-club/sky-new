@@ -12,13 +12,15 @@ import { parentPort } from 'node:worker_threads';
 import { PuppeteerExtra } from 'puppeteer-extra';
 import * as CONFIG from '../config.js';
 import { readdirSync } from 'node:fs';
-import timer from '../utils/timer.js';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { expose, wrap } from 'comlink';
 import md5 from 'md5';
 
 type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
+type WindowCustom = {
+  keysSocketUpdate: (date: string) => void;
+};
 
 // local config in worker
 const LOCAL_CONFIG = { ...CONFIG };
@@ -114,13 +116,12 @@ class WorkerBrowser {
     await page.setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36');
   };
 
-  injectStatic = async (page: Page, socket: boolean = true) => {
+  injectStatic = async (page: Page) => {
     // await page.waitForNavigation({ timeout: LOCAL_CONFIG['WAIT_TIMEOUT'], waitUntil: LOCAL_CONFIG['WAIT_UNTIL'] });
     const files: string[] = readdirSync(resolve(import.meta.dirname, `../../statics`));
 
     for (let index = 0; index < files.length; index++) {
       const fileName = files[index];
-      if (!socket && fileName == 'socket.io.refresh.js') continue;
       await page.addScriptTag({ path: resolve(import.meta.dirname, `../../statics/${fileName}`) });
     }
   };
@@ -172,9 +173,6 @@ class WorkerBrowser {
       // save page
       loggerBrowser.log('Сохранияем адрес ссылки на сделки');
       this.deals = page;
-
-      // set socket in keys
-      this.updateKeys(this.deals);
 
       // end
       loggerBrowser.info('Установка базовой конфигурации завершена');
@@ -336,25 +334,31 @@ class WorkerBrowser {
     }
 
     await this.injectStatic(localPage);
-    timer.timer('IS_WHILE_KEYS', async () => {
-      try {
-        const nextKeys = ((await localPage.evaluate('keys')) as Keys) || ({} as Keys);
-        if (JSON.stringify(nextKeys) !== JSON.stringify(this.keys)) {
-          this.keys = nextKeys;
-          const localAuthKey = this.generateAuthKey(nextKeys);
-          loggerBrowser.log(`Изменение auth key: ${this.authKey == '' ? 'null' : this.authKey}, ${localAuthKey}`);
-          this.authKey = localAuthKey;
-        }
-      } catch (error: unknown) {
-        loggerBrowser.warn({ err: error }, 'Не получилось получить ключи для auth key');
-      }
+    await localPage.exposeFunction('keysSocketUpdate', (data: string) => {
+      this.keys = JSON.parse(data);
+      loggerBrowser.log(`update keys: ${data}`);
+    });
+
+    localPage.evaluate(() => {
+      const socket = io('wss://ws.skycrypto.net', {
+        transports: ['websocket'],
+        path: '/sky-socket',
+      });
+
+      socket.on('update codedata', (data: string) => {
+        (window as unknown as WindowCustom).keysSocketUpdate(data);
+      });
+
+      socket.on('connect', () => {
+        socket.emit('2probe');
+      });
     });
   };
 
   evalute = async <Type>({ page, code }: { page?: Page; code: string }) => {
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
     // проверяем page
-    if (page) this.injectStatic(page, false);
+    if (page) this.injectStatic(page);
     const localPage = page ?? this.deals;
     if (!localPage) {
       loggerBrowser.warn('Не удалось сделать запрос, т.к. отсутсвует page');
