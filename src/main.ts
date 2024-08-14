@@ -37,15 +37,23 @@ const getDeals = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     logger.log(`Получено ${usdtDeals.length}`);
   }
 
-  const newDeals = [] as Deal[];
+  const getNewDeals = async (deals: Deal[]) => {
+    const newDeals = [] as Deal[];
+    for (let indexDeal = 0; indexDeal < deals.length; indexDeal++) {
+      const deal = deals[indexDeal];
+      const oldDeal = await redis.getDeal(deal.id);
+      if (!oldDeal && deal.state === 'closed' && indexDeal >= deals.length / 2) continue;
+      if (!oldDeal) newDeals.push(deal);
+    }
+    return newDeals;
+  };
+
+  let newDeals = [] as Deal[];
+  newDeals = newDeals.concat(await getNewDeals(btcDeals));
+  newDeals = newDeals.concat(await getNewDeals(usdtDeals));
   const allDeals = btcDeals.concat(usdtDeals);
+
   logger.info(`Общее количество сделок ${allDeals.length}`);
-  for (let indexDeal = 0; indexDeal < allDeals.length; indexDeal++) {
-    const deal = allDeals[indexDeal];
-    const oldDeal = await redis.getDeal(deal.id);
-    if (!oldDeal && deal.state === 'closed' && indexDeal >= allDeals.length / 2) continue;
-    if (!oldDeal) newDeals.push(deal);
-  }
   logger.info(`Количество новых сделок ${newDeals.length}`);
   logger.log(`Обновление списка в памяти`);
   await redis.clearDeals();
