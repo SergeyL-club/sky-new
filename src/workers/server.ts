@@ -45,16 +45,16 @@ type RequestQuery = RequestQueryGetConfig | RequestQuerySetConfig | RequestQuery
 let redis: Remote<WorkerRedis> | null = null;
 let browser: Remote<WorkerBrowser> | null = null;
 
-class ServerWorker {
-  private static instance: ServerWorker;
+class WorkerServer {
+  private static instance: WorkerServer;
   private fastify: FastifyInstance | null;
   private listen: Listen;
 
   constructor() {
     this.fastify = null;
     this.listen = {};
-    if (ServerWorker.instance) return ServerWorker.instance;
-    ServerWorker.instance = this;
+    if (WorkerServer.instance) return WorkerServer.instance;
+    WorkerServer.instance = this;
   }
 
   //   onNotifyMessage = async (request: ApiRequest, reply: FastifyReply) => {
@@ -117,7 +117,7 @@ class ServerWorker {
   };
 }
 
-const worker = new ServerWorker();
+const worker = new WorkerServer();
 
 worker.on('config-get', async (request, reply) => {
   const query: RequestQueryGetConfig = request.query as RequestQueryGetConfig;
@@ -160,4 +160,4 @@ parentPort?.on('message', async (message) => {
     }
 });
 
-export default ServerWorker;
+export default WorkerServer;

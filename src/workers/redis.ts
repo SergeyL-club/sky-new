@@ -18,14 +18,14 @@ type ValueType = string | number | boolean | PuppeteerLifeCycleEvent[] | [string
 let browser: Remote<WorkerBrowser> | null = null;
 let server: Remote<WorkerServer> | null = null;
 
-class RedisWorker {
-  private static instance: RedisWorker;
+class WorkerRedis {
+  private static instance: WorkerRedis;
 
   private redis: RedisClientType = createClient();
 
   constructor() {
-    if (RedisWorker.instance) return RedisWorker.instance;
-    RedisWorker.instance = this;
+    if (WorkerRedis.instance) return WorkerRedis.instance;
+    WorkerRedis.instance = this;
   }
 
   private convertRedisToConfig = <Type extends KeyOfConfig>(data: string, key: Type): TypeOfConfig[Type] => {
@@ -65,7 +65,7 @@ class RedisWorker {
   };
 }
 
-const worker = new RedisWorker();
+const worker = new WorkerRedis();
 
 parentPort?.on('message', async (message) => {
   if ('command' in message)
@@ -84,4 +84,4 @@ parentPort?.on('message', async (message) => {
     }
 });
 
-export default RedisWorker;
+export default WorkerRedis;
