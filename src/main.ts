@@ -59,7 +59,7 @@ const getDeals = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   await redis.clearDeals();
   await redis.setDeals(allDeals);
 
-  logger.log(`Отправляем на обработку новые сделки`);
+  if (newDeals.length > 0) logger.log(`Отправляем на обработку новые сделки`);
   for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
     const deal = newDeals[indexNewDeal];
     // TODO: обработка deal
