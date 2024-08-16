@@ -1,4 +1,4 @@
-const statesDeal = async (key, dealId) =>
+const statesNextDeal = async (key, dealId) =>
   new Promise((resolve, reject) => {
     const data = { deal_id: dealId };
     const headers = {
