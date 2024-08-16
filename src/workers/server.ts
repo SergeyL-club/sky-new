@@ -17,6 +17,9 @@ import { getLogs, readLogs } from '../utils/htmlLog.js';
 type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
 type Events = 'config-set' | 'config-get' | 'logs';
 
+type KeyOfConfig = keyof typeof CONFIG;
+type TypeOfConfig = typeof CONFIG;
+
 type Callback = (request: FastifyRequest, reply: FastifyReply) => void | Promise<void>;
 type Listen = {
   [key: string]: Callback;
@@ -125,9 +128,16 @@ worker.on('config-get', async (request, reply) => {
   return reply.status(200).send(`Значение CONFIG[${query.name}]: ${JSON.stringify(data)}`);
 });
 
+const convertRequestToConfig = <Type extends KeyOfConfig>(data: string, key: Type): TypeOfConfig[Type] => {
+  if (typeof CONFIG[key] == 'boolean') return Boolean(data === 'true') as TypeOfConfig[Type];
+  if (typeof CONFIG[key] == 'number') return Number(data) as TypeOfConfig[Type];
+  if (Array.isArray(CONFIG[key]) || typeof CONFIG[key] == 'object') return JSON.parse(data);
+  return data as TypeOfConfig[Type];
+};
+
 worker.on('config-set', async (request, reply) => {
   const query: RequestQuerySetConfig = request.query as RequestQuerySetConfig;
-  const data = await redis?.setConfig(query.name, query.value as string);
+  const data = await redis?.setConfig(query.name, convertRequestToConfig(query.value as string, query.name));
   if (!data) return reply.status(400).send(`Значение не соответсвует CONFIG[${query.name}]: ${query.value} (${typeof query.value})`);
   const dataNow = (await redis?.getConfig(query.name)) ?? CONFIG[query.name];
   return reply.status(200).send(`Значение CONFIG[${query.name}]: ${JSON.stringify(dataNow)}`);
@@ -142,6 +152,8 @@ worker.on('logs', async (request, reply) => {
   const data = getLogs(readLogs(fs, query.limit ?? 10000000000000000));
   return reply.status(200).send(data);
 });
+
+// TODO: сделать ответ on notify message по телефону в balance
 
 parentPort?.on('message', async (message) => {
   if ('command' in message)

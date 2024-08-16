@@ -1,13 +1,15 @@
 import type { WaitForOptions } from 'puppeteer';
 export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
-// конфиг для клиента
-export const MTS_PORT: number = -1;
-export const QIWI_PORT: number = -1;
-export const PAYEER_PORT: number = -1;
-export const PAID_SECRET: string = 'm0nEy$ecrET';
-export const PAID_URL: string = 'http://51.68.137.132';
-export const TG_ID: number = 280212417;
+// конфиг mts
+export const MTS_PORT: number = 29980;
+export const MTS_PAY: string = 'Bz8uYqXyPk';
+
+// адрес на службы (mts, qiwi, yandex, payeer)
+export const PAID_URL: string = 'http://145.239.95.220';
+
+// ид тг куда отправлять уведомления
+export const TG_ID: number = 974047084;
 
 // порт запуска на сервере (запросы по этому порту отправлять)
 export const PORT: number = 13004;
@@ -16,7 +18,8 @@ export const PORT: number = 13004;
 export const EMAIL: string = 'nipici9440@acpeak.com';
 export const PASSWORD: string = 'Myipad132';
 
-// конфиг главного потока
+// конфиг сделки
+export const IS_VERIFIED: boolean = true;
 
 // конфиг браузера
 export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 60000; // ожидание ответа страницы или других загрузок
@@ -25,7 +28,7 @@ export const URL_MAIN_AUTH: string = 'https://skycrypto.me'; // ссылка п�
 export const URL_DEALS: string = 'https://skycrypto.me/deals'; // ссылка где находятся сделки
 export const DELAY_EVENT_MIN: number = 50; // минимальная задержка действия (пример: клик, ожидание после действия)
 export const DELAY_EVENT_MAX: number = 100; // максимальная задержка действия (пример: клик, ожидание после действия)
-export const DELAY_AUTH: number = 5000; // ожидание автоматического перехода сайтом, переключение формы с поролем
+export const DELAY_AUTH: number = 10000; // ожидание автоматического перехода сайтом, переключение формы с поролем
 
 // селекторы для авторизации (если список - 0:ru 1:en)
 export const SELECTOR_INPUT_EMAIL: string = '::-p-xpath(//input[@name="email"])';

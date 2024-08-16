@@ -67,6 +67,17 @@ class WorkerRedis {
     return this.convertRedisToConfig(data, key) as TypeOfConfig[Type];
   };
 
+  getsConfig = async <Type extends KeyOfConfig>(keys: Type[]): Promise<TypeOfConfig[Type][]> => {
+    const datas = [] as TypeOfConfig[Type][];
+    for (let indexKey = 0; indexKey < keys.length; indexKey++) {
+      const key = keys[indexKey];
+      const data = await this.redis?.hGet(CONFIG['DATA_PATH_REDIS_CONFIG'], key);
+      if (!data) datas.push(CONFIG[key] as TypeOfConfig[Type]);
+      else datas.push(this.convertRedisToConfig(data, key) as TypeOfConfig[Type]);
+    }
+    return datas;
+  };
+
   initClient = async () => {
     loggerRedis.log(`Инициализация сокета redis`);
     await this.redis.connect();

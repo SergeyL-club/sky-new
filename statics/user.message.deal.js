@@ -1,6 +1,6 @@
-const requisiteDeal = async (key, dealId, requisite) =>
+const messageDeal = async (key, message, receiver, symbol) =>
   new Promise((resolve, reject) => {
-    const data = { deal_id: dealId, requisite };
+    const data = { message, receiver, symbol };
     const headers = {
       Authorization: `Bearer ${getCookie('sky_token')}`,
       AuthKey: key,
@@ -13,10 +13,10 @@ const requisiteDeal = async (key, dealId, requisite) =>
       'Content-Type': 'application/json;charset=UTF-8',
     };
 
-    const url = 'https://api.skycrypto.me/rest/v1/deals/requisite';
+    const url = 'https://api.skycrypto.me/rest/v1/user-messages';
 
     fetch(url, {
-      method: 'PATCH',
+      method: 'POST',
       headers: headers,
       body: JSON.stringify(data),
     })

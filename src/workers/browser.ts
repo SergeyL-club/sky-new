@@ -1,6 +1,5 @@
-import type { Browser, Page } from 'puppeteer';
+import type { Browser, ElementHandle, Page } from 'puppeteer';
 import type { VanillaPuppeteer } from 'puppeteer-extra';
-import type { InputSet, Keys, Params, ProxyData } from '../../types/workers/browser.type.js';
 // import type { Remote } from 'comlink';
 // import type WorkerServer from './server.js';
 // import type WorkerRedis from './redis.js';
@@ -20,6 +19,66 @@ import md5 from 'md5';
 type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
 type WindowCustom = {
   keysSocketUpdate: (date: string) => void;
+};
+
+export type Keys = {
+  [key: string]: string;
+};
+
+export type Params = {
+  headless: boolean;
+  args: string[];
+  defaultViewport: {
+    width: number;
+    height: number;
+  };
+  ignoreDefaultArgs: string[];
+  userDataDir: string;
+};
+
+export type ProxyData = {
+  url: string;
+  user: string;
+  pass: string;
+};
+
+export type InputSet = {
+  input: ElementHandle;
+  text: string;
+  page?: Page;
+};
+
+export type DetailsDeal = {
+  amount: number;
+  amount_currency: number;
+  buyer: {
+    currency: 'rub' | string;
+    deals: {
+      amount_currency: number;
+      deals: number;
+      dislikes: number;
+      likes: number;
+    };
+    nickname: string;
+    rating: number;
+    verified: boolean;
+  };
+  lot: {
+    id: string;
+  };
+  buyer_commission: number;
+  confirmed_at: string;
+  created_at: string;
+  deal_id: number;
+  dispute: null;
+  end_time: null;
+  id: string;
+  rate: number;
+  requisite: string;
+  state: 'proposed' | 'deleted' | 'paid';
+  symbol: 'btc' | 'usdt';
+  type: number;
+  voted: boolean;
 };
 
 // local config in worker
