@@ -13,8 +13,8 @@ export const TG_ID: number = 280212417;
 export const PORT: number = 13004;
 
 // майл и пороль для входа в sky
-export const EMAIL: string = 'support@bizoninvest.com';
-export const PASSWORD: string = 'fMwbh7XeXdTYNci';
+export const EMAIL: string = 'nipici9440@acpeak.com';
+export const PASSWORD: string = 'Myipad132';
 
 // конфиг главного потока
 
@@ -46,6 +46,6 @@ export const POLLING_DEALS_LIMIT_USDT: number = 20;
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS: string = 'sky';
 export const DATA_PATH_REDIS_CONFIG: string = `${DATA_PATH_REDIS}:configs`;
-export const DATA_PATH_REDIS_DEALS: string = `${DATA_PATH_REDIS}:deals`;
+export const DATA_PATH_REDIS_DEALS_CACHE: string = `${DATA_PATH_REDIS}:deals:cache`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;

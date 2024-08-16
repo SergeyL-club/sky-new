@@ -3,7 +3,7 @@ import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
-import type { Deal } from './workers/redis.js';
+import type { CacheDeal } from './workers/redis.js';
 
 import path from 'path';
 import { wrap } from 'comlink';
@@ -22,47 +22,54 @@ const getDeals = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const usdtParams = params('usdt', 'rub', 0, usdtLimit as number);
 
   const btcIs = await redis.getConfig('POLLING_DEALS_BTC');
-  let btcDeals = [] as Deal[];
+  let btcDeals = [] as CacheDeal[];
   if (btcIs) {
     logger.info(`Получение списка с данными ${JSON.stringify(btcParams)}`);
-    btcDeals = (await browser.evalute({ code: code(btcParams) })) as Deal[];
+    btcDeals = ((await browser.evalute({ code: code(btcParams) })) as CacheDeal[]).map((el) => ({ id: el.id, state: el.state }));
     logger.log(`Получено ${btcDeals.length}`);
   }
 
   const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
-  let usdtDeals = [] as Deal[];
+  let usdtDeals = [] as CacheDeal[];
   if (usdtIs) {
     logger.info(`Получение списка с данными ${JSON.stringify(usdtParams)}`);
-    usdtDeals = (await browser.evalute({ code: code(usdtParams) })) as Deal[];
+    usdtDeals = ((await browser.evalute({ code: code(usdtParams) })) as CacheDeal[]).map((el) => ({ id: el.id, state: el.state }));
     logger.log(`Получено ${usdtDeals.length}`);
   }
 
-  const getNewDeals = async (deals: Deal[]) => {
-    const newDeals = [] as Deal[];
-    for (let indexDeal = 0; indexDeal < deals.length; indexDeal++) {
-      const deal = deals[indexDeal];
-      const oldDeal = await redis.getDeal(deal.id);
-      if (!oldDeal && deal.state === 'closed' && indexDeal >= deals.length / 2) continue;
-      if (!oldDeal) newDeals.push(deal);
-    }
-    return newDeals;
+  const getNewDeals = async (deals: CacheDeal[]) => {
+    const oldDeals = await redis.getCacheDeals();
+
+    const findNewDeals = deals.filter((now) => oldDeals.findIndex((old) => now.id === old.id) === -1);
+    const findCancelDeals = oldDeals.filter((old) => deals.findIndex((now) => now.id === old.id) === -1 && old.state !== 'closed').map((el) => ({ ...el, state: 'cancel' }));
+
+    return findNewDeals.concat(findCancelDeals);
   };
 
-  let newDeals = [] as Deal[];
-  newDeals = newDeals.concat(await getNewDeals(btcDeals));
-  newDeals = newDeals.concat(await getNewDeals(usdtDeals));
+  let newDeals = [] as CacheDeal[];
   const allDeals = btcDeals.concat(usdtDeals);
+  newDeals = newDeals.concat(await getNewDeals(allDeals));
 
   logger.info(`Общее количество сделок ${allDeals.length}`);
   logger.info(`Количество новых сделок ${newDeals.length}`);
   logger.log(`Обновление списка в памяти`);
-  await redis.clearDeals();
-  await redis.setDeals(allDeals);
+  await redis.setCacheDeal(allDeals);
 
   if (newDeals.length > 0) logger.log(`Отправляем на обработку новые сделки`);
   for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
-    // const deal = newDeals[indexNewDeal];
-    // TODO: обработка deal
+    const deal = newDeals[indexNewDeal];
+    Promise.resolve(transDeal(redis, browser, deal));
+  }
+};
+
+const transDeal = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, cacheDeal: CacheDeal) => {
+  try {
+    logger.info(`Изменение сделки ${cacheDeal.id} (${cacheDeal.state})`);
+    const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve).catch(() => resolve({})))`;
+    const data = browser.evalute({ code: evaluateFunc });
+    logger.log({ obj: data }, `Получение данных сделки ${cacheDeal.id}:`);
+  } catch (error: unknown) {
+    logger.error(error);
   }
 };
 
