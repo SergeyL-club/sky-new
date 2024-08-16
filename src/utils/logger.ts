@@ -2,6 +2,7 @@ import path from 'path';
 import { DestinationStream, MultiStreamOptions, pino, StreamEntry } from 'pino';
 import { getDate } from './dateTime.js';
 import { closeSync, existsSync, mkdirSync, openSync, writeSync } from 'fs';
+import { threadId } from 'worker_threads';
 
 const customLevels = {
   log: 0,
@@ -34,7 +35,7 @@ export const renderTextLine = <T extends string>(msg: T, level: Levels, html = f
   const colorEnd = html ? '</span>' : ColorsStart['log'];
   let text = html ? '<pre style="margin: 0; padding: 0">' + ColorsStartHtml['log'] : '';
   text += `(${getDate({ isMore: 'format', actualDate: data['time'] })}) `;
-  text += `[PID: ${data['pid']}, `;
+  text += `[PID: ${threadId}, `;
   text += data['channel'] ? `CHANNEL: ${data['channel']}, ` : '';
   text += `${colorStart}${level.toUpperCase()}${colorEnd}]: `;
 
