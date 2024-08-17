@@ -101,11 +101,9 @@ class WorkerRedis {
 
   timerPhone = async () => {
     const now = Date.now();
-    const timeCancel = (await this.getConfig('TIME_CANCEL_TIMER_PHONE')) as number;
     const timeDispute = (await this.getConfig('TIME_DISPUTE_TIMER_PHONE')) as number;
     const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
     const phones = await this.redis.keys(path + ':*');
-    const phonesCancel = [] as PhoneServiceData[];
     const phonesDispute = [] as PhoneServiceData[];
     for (let indexPhone = 0; indexPhone < phones.length; indexPhone++) {
       const pathPhone = phones[indexPhone];
@@ -113,11 +111,10 @@ class WorkerRedis {
       if (!phone) continue;
       const phoneData = JSON.parse(phone) as PhoneServiceData;
       const delta = now - phoneData.unlock_at;
-      if (phoneData.create_at === phoneData.unlock_at && delta >= timeCancel) phonesCancel.push(phoneData);
-      else if (phoneData.create_at !== phoneData.unlock_at && delta >= timeDispute) phonesDispute.push(phoneData);
+      if (phoneData.create_at !== phoneData.unlock_at && delta >= timeDispute) phonesDispute.push(phoneData);
     }
 
-    return { phonesCancel, phonesDispute };
+    return { phonesDispute };
   };
 
   setCacheDeal = async (deals: CacheDeal[]) => {
