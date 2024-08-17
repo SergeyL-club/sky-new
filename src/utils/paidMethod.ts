@@ -39,14 +39,14 @@ export async function get_method_id(str: Awaited<ReturnType<typeof get_method_st
   return -1;
 }
 
-export async function sendRequest(subUrl: string, maxRepeat = 3, cnt = 1): Promise<any> {
-  const url = 'http://145.239.95.220:29980/' + subUrl;
-  const result = await sendGet(url);
+export async function sendRequest(url: string, subUrl: string, maxRepeat = 3, cnt = 1): Promise<any> {
+  const localUrl = url + subUrl;
+  const result = await sendGet(localUrl);
   if (result === false) {
     logger.error('Запрос не удался:', subUrl);
     if (cnt < maxRepeat) {
       logger.log('Повторная попытка(' + cnt + ')');
-      return await sendRequest(subUrl, cnt + 1);
+      return await sendRequest(url, subUrl, cnt + 1);
     }
     return false;
   }
@@ -55,15 +55,15 @@ export async function sendRequest(subUrl: string, maxRepeat = 3, cnt = 1): Promi
   return JSON.parse(result + '');
 }
 
-export async function getNumber(sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, isQiwi = false, is_pre = false) {
-  let url = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
+export async function getNumber(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, isQiwi = false, is_pre = false) {
+  const subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
   if (is_pre) url += '&test=1';
-  return await sendRequest(url);
+  return await sendRequest(url, subUrl);
 }
 
-export async function unlockNumber(id: string) {
-  const url = `start-checking-balance?deal_id=${id}`;
-  return await sendRequest(url);
+export async function unlockNumber(url: string, id: string) {
+  const subUrl = `start-checking-balance?deal_id=${id}`;
+  return await sendRequest(url, subUrl);
 }
 
 export async function sendGet(url: string): Promise<string | false> {
