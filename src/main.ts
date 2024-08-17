@@ -11,7 +11,7 @@ import { wrap } from 'comlink';
 import logger, { loggerBrowser } from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
-import { get_method_id, get_method_str, getNumber, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
+import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
 
 const ignoreList = [] as string[];
 
@@ -253,6 +253,8 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
     unlock_at: now,
     id: deal.deal_id,
     deal_id: deal.id,
+    type: deal.symbol,
+    ammount: deal.amount_currency,
     requisite: {
       chat_text: phone.requisite.chat_text,
       requisite_text: phone.requisite.requisite_text,
@@ -276,7 +278,26 @@ async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
 }
 
 // TODO: обработка полученного телефона
-async function balance(phone: PhoneServiceData) {}
+async function balance(redis: Remote<WorkerRedis>, phone: PhoneServiceData) {
+  const isLimit = phone.ammount <= phone.requisite.max_payment_sum && phone.ammount >= phone.requisite.max_payment_sum;
+  if (!isLimit) {
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
+    await ignoreDeal(redis, { id: phone.deal_id } as DetailsDeal);
+    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не подходит по лимитам (${phone.requisite.min_payment_sum}, ${phone.ammount}, ${phone.requisite.max_payment_sum})`, tgId, mainPort);
+  }
+
+  // освобождаем телефон
+  logger.log(`Освобождаем телефон сделки ${phone.deal_id}`);
+  await redis.delPhoneDeal(phone.deal_id);
+
+  // откуп
+  const val = phone.ammount;
+  const cur = phone.type;
+  const market = cur === 'btc' ? 'btcrub' : 'usdtrub';
+  const val_perc = val * 1.005;
+  const otk = await sendGet('http://51.68.137.132:20000/?cmd=order&volume=' + val_perc + '&market=' + market);
+  logger.info(`Откуп (${phone.deal_id}, val=${val_perc}, ${market}, Откуп результат:${otk})`);
+}
 
 const main = () =>
   new Promise<number>(() => {
@@ -361,16 +382,16 @@ const main = () =>
       redis.initClient().then(() => {
         server.init();
       });
-      // browser.initBrowser().then(() => {
-      //   browser.updateKeys().then(() => {
-      //     loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-      //     pollingDeals(redis, getDeals.bind(null, redis, browser));
-      //     pollingPhone(redis, timerPhone.bind(null, redis, browser));
-      //     workerServer.on('message', (data) => {
-      //       if ('command' in data && data.command === 'balance') balance(data.phone);
-      //     });
-      //   });
-      // });
+      browser.initBrowser().then(() => {
+        browser.updateKeys().then(() => {
+          loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+          pollingDeals(redis, getDeals.bind(null, redis, browser));
+          pollingPhone(redis, timerPhone.bind(null, redis, browser));
+          workerServer.on('message', (data) => {
+            if ('command' in data && data.command === 'balance') balance.call(null, redis, data.phone);
+          });
+        });
+      });
     } catch (error: unknown) {
       logger.error(error);
     }
