@@ -177,7 +177,6 @@ worker.on('menu', async (request, reply) => {
   const values = (await redis?.getsConfig(keys)) as (string | number | boolean | [string, string])[];
   const query: RequestQueryMenu = request.query as RequestQueryMenu;
   const ignoreClient: KeyOfConfig[] = [
-    'DATA_PATH_REDIS',
     'DATA_PATH_REDIS_CONFIG',
     'DATA_PATH_REDIS_DEALS_CACHE',
     'DB_REDIS',
