@@ -1,10 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Remote } from 'comlink';
 import type WorkerRedis from './redis.js';
+import type { ApiRequest } from '../utils/paidMethod.js';
 // import type WorkerBrowser from './browser.js';
 
-// import md5 from 'md5';
-// import { ApiRequest } from '../utils/paid.js';
 import { parentPort } from 'node:worker_threads';
 import * as CONFIG from '../config.js';
 import { fastify } from 'fastify';
@@ -13,6 +12,7 @@ import { loggerServer } from '../utils/logger.js';
 import { resolve } from 'node:path';
 import { getDate } from '../utils/dateTime.js';
 import { getLogs, readLogs } from '../utils/htmlLog.js';
+import md5 from 'md5';
 
 type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
 type Events = 'config-set' | 'config-get' | 'logs' | 'menu';
@@ -67,34 +67,35 @@ class WorkerServer {
     WorkerServer.instance = this;
   }
 
-  //   onNotifyMessage = async (request: ApiRequest, reply: FastifyReply) => {
-  //     const data = request.body;
-  //     logger.log('Уведомление о поступлении, данные:', data);
-  //     const srcSign = data.sign;
-  //     delete data.sign;
-  //     const tmp: string[] = [];
-  //     Object.keys(data)
-  //       .sort()
-  //       .forEach(function (k) {
-  //         const v = (data as any)[k];
-  //         tmp.push(v);
-  //       });
-  //     const hash = tmp.join(':');
-  //     const sign = md5(hash + LOCAL_CONFIG['PAID_SECRET']);
-  //     if (sign != srcSign) {
-  //       logger.error(new Error(`Хеши не сходятся: ${srcSign}, ${sign}`));
-  //       reply.send('error');
-  //       return;
-  //     }
+  onNotifyMessage = async (request: ApiRequest, reply: FastifyReply) => {
+    const data = request.body;
+    loggerServer.log('Уведомление о поступлении, данные:', data);
+    const srcSign = data.sign;
+    delete data.sign;
+    const tmp: string[] = [];
+    Object.keys(data)
+      .sort()
+      .forEach(function (k) {
+        const v = (data as any)[k];
+        tmp.push(v);
+      });
+    const hash = tmp.join(':');
+    const paidSecret = (await redis?.getConfig('PAID_SECRET')) ?? CONFIG['PAID_SECRET'];
+    const sign = md5(hash + paidSecret);
+    if (sign != srcSign) {
+      loggerServer.error(new Error(`Хеши не сходятся: ${srcSign}, ${sign}`));
+      reply.send('error');
+      return;
+    }
 
-  //     // TODO: заменить получение id, и обработку balance
-  //     const id = await this.sManager.redis.loadIdNow(String(data.id));
-  //     if (id) {
-  //       this.sManager.balance(data);
-  //       return await reply.send('ok');
-  //     }
-  //     return await reply.send('not');
-  //   };
+    const phone = await redis?.getPhoneId(data.id);
+    if (!phone) {
+      loggerServer.warn(`Не найден телефон по запросу (${data.id})`);
+      return await reply.send('not');
+    }
+    parentPort?.postMessage({ command: 'balance', phone });
+    return await reply.send('ok');
+  };
 
   on = (event: Events, callback: Callback) => {
     this.listen[event] = callback;
@@ -105,6 +106,9 @@ class WorkerServer {
 
     loggerServer.log(`Инициализация fastify`);
     this.fastify = fastify({ logger: false });
+
+    loggerServer.log(`Создание хука на путь /notify`);
+    this.fastify.post('/notify', this.onNotifyMessage.bind(this));
 
     loggerServer.log(`Создание хука на путь /`);
     this.fastify.get(`/`, (request, reply) => {
@@ -164,8 +168,6 @@ worker.on('logs', async (request, reply) => {
   return reply.status(200).send(data);
 });
 
-// TODO: сделать ответ on notify message по телефону в balance
-
 function generateHtml(html: string, code: string, style: string) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Menu Config</title><style>${style}</style></head><body><div style="display:flex;flex-direction:column;">${html}</div><script>${code}</script></body></html>`;
@@ -194,6 +196,7 @@ worker.on('menu', async (request, reply) => {
     'URL_REDIS',
     'WAIT_TIMEOUT',
     'WAIT_UNTIL',
+    'DATA_PATH_REDIS_PHONE',
   ];
 
   for (let indexKey = 0; indexKey < keys.length; indexKey++) {
