@@ -73,12 +73,14 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve).catch(() => resolve({})))`;
     const data: DetailsDeal = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal;
     logger.info(`Получены актуальные данные сделки ${data.id} (${data.state})`);
+
+    if (data.dispute !== null) return await disputDeal(redis, data);
+
     switch (data.state) {
       case 'proposed':
         return await proposedDeal(redis, browser, data);
       case 'paid':
         return await paidDeal(redis, data);
-      // TODO: сделать спор
     }
   } catch (error: unknown) {
     logger.error(error);
@@ -86,7 +88,6 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
 }
 
 async function cancelDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
-  // TODO: добавить освобождение телефона если он есть
   const phone = await redis.getPhoneDeal(deal.id);
   if (phone) {
     logger.log(`Сделка ${deal.id} найден телефон в базе, особождаем`);
@@ -100,16 +101,31 @@ async function cancelDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
   } else logger.warn(`Не удалось отменить сделку (${deal.id}, ${result})`);
 }
 
-async function cancelDealPhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
-  // TODO: добавить освобождение телефона если он есть
+async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
   logger.log(`Сделка ${phone.deal_id} найден телефон в базе, особождаем`);
   await redis.delPhoneDeal(phone.deal_id);
 
-  const evaluateFunc = `new Promise((resolve) => cancelDeal('[authKey]', '${phone.deal_id}').then(() => resolve(true)).catch(() => resolve(false)))`;
+  const evaluateFunc = `new Promise((resolve) => disputeDeal('[authKey]', '${phone.deal_id}').then(() => resolve(true)).catch(() => resolve(false)))`;
   const result = await browser.evalute({ code: evaluateFunc });
-  if (result) {
-    logger.info(`Успешная отмена сделки (${phone.deal_id})`);
-  } else logger.warn(`Не удалось отменить сделку (${phone.deal_id}, ${result})`);
+  if (result) logger.info(`Успешно отправили в спор сделку ${phone.deal_id}`);
+  else {
+    logger.warn(`Не удалось отправить сделку (${phone.deal_id}) в спор`);
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+    await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
+  }
+}
+
+async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
+  logger.info(`Сделка ${deal.id} находится в споре, освобождение и отправка уведомления`);
+
+  const phone = await redis.getPhoneDeal(deal.id);
+  if (phone) {
+    logger.log(`Сделка ${deal.id} найден телефон в базе, особождаем`);
+    await redis.delPhoneDeal(deal.id);
+  } else logger.log(`Сделка ${deal.id} не найден телефон`);
+
+  const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+  await sendTgNotify(`(sky) Сделка ${deal.id} была открыта в споре`, tgId, mainPort);
 }
 
 async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
@@ -140,7 +156,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     if (Number(prePhone['result']) != 1) {
       logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
-      return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены предварительные реквизиты`, tgId, mainPort);
+      return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены предварительные реквизиты, нужно проверить`, tgId, mainPort);
     }
     logger.log({ obj: prePhone }, `Предворительный телефон найден (${deal.id}) ->`);
 
@@ -169,7 +185,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   const phone = await getNumber(`${paidUrl}:${mainPort}/`, Number(amount), methodId, deal.deal_id);
   if (Number(phone['result']) != 1) {
     logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${methodStr})`));
-    return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты, нужно проверить`, tgId, mainPort);
   }
   logger.info({ obj: phone }, `Телефон найден (${deal.id}) ->`);
 
@@ -177,13 +193,23 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
   const evaluateFuncChat = `new Promise((resolve) => messageDeal('[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}').then(() => resolve(true)).catch(() => resolve(false)))`;
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
-  if (!resultChat) return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount})`, tgId, mainPort);
+  if (!resultChat)
+    return await sendTgNotify(
+      `(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
+      tgId,
+      mainPort,
+    );
 
   // send requisite
   logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
   const evaluateFuncRequisite = `new Promise((resolve) => requisiteDeal('[authKey]', '${deal.id}', '${phone.requisite.requisite_text}').then(() => resolve(true)).catch(() => resolve(false)))`;
   const resultRequisite = await browser.evalute({ code: evaluateFuncRequisite });
-  if (!resultRequisite) return await sendTgNotify(`(sky) Неудалось отправить реквизиты сделки ${deal.id} (${phone.requisite.text}, ${amount})`, tgId, mainPort);
+  if (!resultRequisite)
+    return await sendTgNotify(
+      `(sky) Неудалось отправить реквизиты сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
+      tgId,
+      mainPort,
+    );
 
   // save redis phone
   logger.log(`Сохраняем сделку и телефон (${deal.id}, ${phone.requisite.text}, ${amount})`);
@@ -207,10 +233,11 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   const phone = await redis.getPhoneDeal(deal.id);
   if (!phone) return logger.warn(`Сделка ${deal.id} была в состоянии paid, но не имеет телефона`);
-  const now = Date.now();
   const [paidUrl, mainPort] = await redis.getsConfig(['PAID_URL', 'PORT']);
   const response = await unlockNumber(`${paidUrl}:${mainPort}/`, String(phone.id));
   if (!response) return logger.warn(`Сделка ${deal.id} не удалось unlock number для проверки телефона`);
+  const now = Date.now();
+  await redis.setPhone({ ...phone, unlock_at: now });
   logger.info(`Сделка ${deal.id} успешно отправлена на проверку телефона`);
 }
 
@@ -289,10 +316,10 @@ const main = () =>
 
     // timer phone
     const timerPhone = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) => {
-      const { phonesCancel } = await redis.timerPhone();
-      for (let indexCancel = 0; indexCancel < phonesCancel.length; indexCancel++) {
-        const phone = phonesCancel[indexCancel];
-        Promise.resolve(cancelDealPhone(redis, browser, phone));
+      const { phonesDispute } = await redis.timerPhone();
+      for (let indexDispute = 0; indexDispute < phonesDispute.length; indexDispute++) {
+        const phone = phonesDispute[indexDispute];
+        Promise.resolve(disputePhone(redis, browser, phone));
       }
     };
 
@@ -300,16 +327,16 @@ const main = () =>
       redis.initClient().then(() => {
         server.init();
       });
-      browser.initBrowser().then(() => {
-        browser.updateKeys().then(() => {
-          loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-          pollingDeals(redis, getDeals.bind(null, redis, browser));
-          pollingPhone(redis, timerPhone.bind(null, redis, browser));
-          workerServer.on('message', (data) => {
-            if ('command' in data && data.command === 'balance') balance(data.phone);
-          });
-        });
-      });
+      // browser.initBrowser().then(() => {
+      //   browser.updateKeys().then(() => {
+      //     loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+      //     pollingDeals(redis, getDeals.bind(null, redis, browser));
+      //     pollingPhone(redis, timerPhone.bind(null, redis, browser));
+      //     workerServer.on('message', (data) => {
+      //       if ('command' in data && data.command === 'balance') balance(data.phone);
+      //     });
+      //   });
+      // });
     } catch (error: unknown) {
       logger.error(error);
     }
