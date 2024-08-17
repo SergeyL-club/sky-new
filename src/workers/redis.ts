@@ -10,7 +10,7 @@ import { createClient, RedisClientType } from 'redis';
 import { loggerRedis } from '../utils/logger.js';
 
 type ServerCommands = 'server' | 'browser' | 'exit' | 'connect';
-type KeyOfConfig = keyof typeof CONFIG;
+export type KeyOfConfig = keyof typeof CONFIG;
 type TypeOfConfig = typeof CONFIG;
 type ValueType = string | number | boolean | PuppeteerLifeCycleEvent[] | [string, string] | undefined;
 
@@ -143,7 +143,7 @@ class WorkerRedis {
   setPhone = async (phone: PhoneServiceData) => {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
-      await this.redis.set(path + phone.requisite.text, JSON.stringify(phone));
+      await this.redis.set(path + ':' + phone.requisite.text, JSON.stringify(phone));
       return true;
     } catch {
       return false;

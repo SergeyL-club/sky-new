@@ -56,8 +56,8 @@ export async function sendRequest(url: string, subUrl: string, maxRepeat = 3, cn
 }
 
 export async function getNumber(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, isQiwi = false, is_pre = false) {
-  const subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
-  if (is_pre) url += '&test=1';
+  let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
+  if (is_pre) subUrl += '&test=1';
   return await sendRequest(url, subUrl);
 }
 
