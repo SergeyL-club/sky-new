@@ -25,7 +25,6 @@ export type DetailsDeal = {};
 
 // phone
 export type PhoneServiceData = {
-  result: 0 | 1;
   requisite: {
     text: string;
     chat_text: string;
