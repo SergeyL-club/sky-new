@@ -23,6 +23,22 @@ export type CacheDeal = {
 // details deal
 export type DetailsDeal = {};
 
+// phone
+export type PhoneServiceData = {
+  result: 0 | 1;
+  requisite: {
+    text: string;
+    chat_text: string;
+    requisite_text: string;
+    min_payment_sum: string;
+    max_payment_sum: string;
+  };
+  id: number;
+  deal_id: string;
+  create_at: number;
+  unlock_at: number;
+};
+
 // channels
 // let browser: Remote<WorkerBrowser> | null = null;
 // let server: Remote<WorkerServer> | null = null;
@@ -86,7 +102,8 @@ class WorkerRedis {
 
   setCacheDeal = async (deals: CacheDeal[]) => {
     try {
-      await this.redis.set(CONFIG['DATA_PATH_REDIS_DEALS_CACHE'], JSON.stringify(deals));
+      const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
+      await this.redis.set(path, JSON.stringify(deals));
       return true;
     } catch {
       return false;
@@ -95,7 +112,8 @@ class WorkerRedis {
 
   getCacheDeals = async (): Promise<CacheDeal[]> => {
     try {
-      const data = await this.redis.get(CONFIG['DATA_PATH_REDIS_DEALS_CACHE']);
+      const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
+      const data = await this.redis.get(path);
       if (!data) return [];
       return JSON.parse(data);
     } catch {
@@ -103,105 +121,43 @@ class WorkerRedis {
     }
   };
 
-  // private setDealMulti = (multi: ReturnType<typeof this.redis.multi>, deal: Deal) => {
-  //   const keys = Object.keys(deal);
-  //   for (let indexKey = 0; indexKey < keys.length; indexKey++) {
-  //     const key = keys[indexKey] as keyof Deal;
-  //     const value = deal[key as keyof Deal];
-  //     const data = this.convertDealToRedis(value, key);
-  //     multi.hSet(`${CONFIG['DATA_PATH_REDIS_DEALS']}:${deal.id}`, key, data);
-  //   }
-  // };
+  setPhone = async (phone: PhoneServiceData) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
+      await this.redis.set(path + phone.requisite.text, JSON.stringify(phone));
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
-  // private getDealMulti = (multi: ReturnType<typeof this.redis.multi>, id: string) => {
-  //   const keys = Object.keys(this.defaultDeal);
-  //   for (let indexKey = 0; indexKey < keys.length; indexKey++) {
-  //     const key = keys[indexKey] as keyof Deal;
-  //     multi.hGet(`${CONFIG['DATA_PATH_REDIS_DEALS']}:${id}`, key);
-  //   }
-  // };
-  // private remDealMulti = (multi: ReturnType<typeof this.redis.multi>, path: string) => {
-  //   const keys = Object.keys(this.defaultDeal);
-  //   for (let indexKey = 0; indexKey < keys.length; indexKey++) {
-  //     const key = keys[indexKey] as keyof Deal;
-  //     multi.hDel(path, key);
-  //   }
-  // };
+  getPhone = async (requisite: string) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
+      const data = await this.redis.get(path + ':' + requisite);
+      if (!data) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  };
 
-  // setDeal = async (deal: Deal) => {
-  //   try {
-  //     const multi = this.redis.multi();
-  //     this.setDealMulti(multi, deal);
-  //     await multi.exec();
-  //     return true;
-  //   } catch {
-  //     return false;
-  //   }
-  // };
-
-  // setDeals = async (deals: Deal[]) => {
-  //   const multi = this.redis.multi();
-  //   for (let indexDeal = 0; indexDeal < deals.length; indexDeal++) {
-  //     const deal = deals[indexDeal];
-  //     this.setDealMulti(multi, deal);
-  //   }
-
-  //   try {
-  //     await multi.exec();
-  //     return true;
-  //   } catch {
-  //     return false;
-  //   }
-  // };
-
-  // getDeal = async (id: string) => {
-  //   try {
-  //     const multi = this.redis.multi();
-  //     this.getDealMulti(multi, id);
-  //     const result = await multi.exec();
-  //     const deal = {} as Deal;
-
-  //     const keys = Object.keys(this.defaultDeal);
-  //     for (let indexKeys = 0; indexKeys < keys.length; indexKeys++) {
-  //       const key = keys[indexKeys] as keyof Deal;
-  //       deal[key] = this.convertRedisToDeal(result[indexKeys] as string, key) as never;
-  //     }
-
-  //     if (!deal.id) return null;
-  //     return deal;
-  //   } catch {
-  //     return null;
-  //   }
-  // };
-
-  // getDeals = async (ids: string[]) => {
-  //   try {
-  //     const deals = [] as (Deal | null)[];
-  //     for (let indexIds = 0; indexIds < ids.length; indexIds++) {
-  //       const id = ids[indexIds];
-  //       deals.push(await this.getDeal(id));
-  //     }
-
-  //     return deals;
-  //   } catch {
-  //     return [];
-  //   }
-  // };
-
-  // clearDeals = async () => {
-  //   const multi = this.redis.multi();
-  //   const dealsPath = await this.redis.keys(`${CONFIG['DATA_PATH_REDIS_DEALS']}:*`);
-  //   for (let indexDeal = 0; indexDeal < dealsPath.length; indexDeal++) {
-  //     const path = dealsPath[indexDeal];
-  //     this.remDealMulti(multi, path);
-  //   }
-  //   try {
-  //     await multi.exec();
-  //     return true;
-  //   } catch {
-  //     return false;
-  //   }
-  // };
+  getPhoneDeal = async (dealId: string) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
+      const phones = await this.redis.keys(path + ':*');
+      for (let indexPhone = 0; indexPhone < phones.length; indexPhone++) {
+        const pathPhone = phones[indexPhone];
+        const data = await this.redis.get(pathPhone);
+        if (!data) continue;
+        const phone = JSON.parse(data) as PhoneServiceData;
+        if (phone.deal_id === dealId) return phone;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
 }
 
 const worker = new WorkerRedis();
