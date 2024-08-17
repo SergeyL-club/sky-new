@@ -10,7 +10,7 @@ export const PAID_URL: string = 'http://145.239.95.220';
 export const PAID_SECRET: string = 'm0nEy$ecrET';
 
 // ид тг куда отправлять уведомления
-export const TG_ID: number = 974047084;
+export const TG_ID: number = 280212417;
 
 // порт запуска на сервере (запросы по этому порту отправлять)
 export const PORT: number = 13004;
