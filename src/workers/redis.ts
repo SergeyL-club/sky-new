@@ -33,6 +33,8 @@ export type PhoneServiceData = {
     max_payment_sum: number;
   };
   id: number;
+  ammount: number;
+  type: 'btc' | 'usdt';
   deal_id: string;
   create_at: number;
   unlock_at: number;
