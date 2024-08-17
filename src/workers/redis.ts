@@ -99,6 +99,32 @@ class WorkerRedis {
     loggerRedis.info(`Инициализация сокета redis успешно`);
   };
 
+  timerPhone = async () => {
+    const now = Date.now();
+    const timeCancel = (await this.getConfig('TIME_CANCEL_TIMER_PHONE')) as number;
+    const timeDispute = (await this.getConfig('TIME_DISPUTE_TIMER_PHONE')) as number;
+    const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
+    const phones = await this.redis.keys(path + ':*');
+    const phonesCancel = [] as PhoneServiceData[];
+    const phonesDispute = [] as PhoneServiceData[];
+    for (let indexPhone = 0; indexPhone < phones.length; indexPhone++) {
+      const pathPhone = phones[indexPhone];
+      const phone = await this.redis.get(pathPhone);
+      if (!phone) continue;
+      const phoneData = JSON.parse(phone) as PhoneServiceData;
+      const delta = now - phoneData.unlock_at;
+      if (phoneData.create_at === phoneData.unlock_at && delta >= timeCancel) {
+        await this.delPhoneDeal(phoneData.deal_id);
+        phonesCancel.push(phoneData);
+      } else if (phoneData.create_at !== phoneData.unlock_at && delta >= timeDispute) {
+        await this.delPhoneDeal(phoneData.deal_id);
+        phonesDispute.push(phoneData);
+      }
+    }
+
+    return { phonesCancel, phonesDispute };
+  };
+
   setCacheDeal = async (deals: CacheDeal[]) => {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
