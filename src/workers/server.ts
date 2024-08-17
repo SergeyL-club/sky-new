@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Remote } from 'comlink';
 import type WorkerRedis from './redis.js';
-import type { ApiRequest } from '../utils/paidMethod.js';
+import { sendTgNotify, type ApiRequest } from '../utils/paidMethod.js';
 // import type WorkerBrowser from './browser.js';
 
 import { parentPort } from 'node:worker_threads';
@@ -91,6 +91,8 @@ class WorkerServer {
     const phone = await redis?.getPhoneId(data.id);
     if (!phone) {
       loggerServer.warn(`Не найден телефон по запросу (${data.id})`);
+      const [tgId, mainPort] = (await redis?.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+      await sendTgNotify(`(sky) Не удалось найти телефон по номеру сделки ${data.id}, нужно проверить`, tgId, mainPort);
       return await reply.send('not');
     }
     parentPort?.postMessage({ command: 'balance', phone });
