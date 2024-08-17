@@ -29,8 +29,8 @@ export type PhoneServiceData = {
     text: string;
     chat_text: string;
     requisite_text: string;
-    min_payment_sum: string;
-    max_payment_sum: string;
+    min_payment_sum: number;
+    max_payment_sum: number;
   };
   id: number;
   deal_id: string;
