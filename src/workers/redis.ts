@@ -158,6 +158,23 @@ class WorkerRedis {
     }
   };
 
+  getPhoneId = async (id: number) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
+      const phones = await this.redis.keys(path + ':*');
+      for (let indexPhone = 0; indexPhone < phones.length; indexPhone++) {
+        const pathPhone = phones[indexPhone];
+        const data = await this.redis.get(pathPhone);
+        if (!data) continue;
+        const phone = JSON.parse(data) as PhoneServiceData;
+        if (phone.id === id) return phone;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   delPhoneDeal = async (dealId: string) => {
     try {
       const phone = await this.getPhoneDeal(dealId);
