@@ -47,8 +47,8 @@ export const POLLING_DEALS_LIMIT_BTC: number = 20;
 export const POLLING_DEALS_LIMIT_USDT: number = 20;
 
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
-export const DATA_PATH_REDIS: string = 'sky';
-export const DATA_PATH_REDIS_CONFIG: string = `${DATA_PATH_REDIS}:configs`;
-export const DATA_PATH_REDIS_DEALS_CACHE: string = `${DATA_PATH_REDIS}:deals:cache`;
+export const DATA_PATH_REDIS_CONFIG: string = `sky:configs`;
+export const DATA_PATH_REDIS_DEALS_CACHE: string = `sky:deals:cache`;
+export const DATA_PATH_REDIS_PHONE: string = `sky:phone`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;
