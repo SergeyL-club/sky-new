@@ -113,13 +113,8 @@ class WorkerRedis {
       if (!phone) continue;
       const phoneData = JSON.parse(phone) as PhoneServiceData;
       const delta = now - phoneData.unlock_at;
-      if (phoneData.create_at === phoneData.unlock_at && delta >= timeCancel) {
-        await this.delPhoneDeal(phoneData.deal_id);
-        phonesCancel.push(phoneData);
-      } else if (phoneData.create_at !== phoneData.unlock_at && delta >= timeDispute) {
-        await this.delPhoneDeal(phoneData.deal_id);
-        phonesDispute.push(phoneData);
-      }
+      if (phoneData.create_at === phoneData.unlock_at && delta >= timeCancel) phonesCancel.push(phoneData);
+      else if (phoneData.create_at !== phoneData.unlock_at && delta >= timeDispute) phonesDispute.push(phoneData);
     }
 
     return { phonesCancel, phonesDispute };
