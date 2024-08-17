@@ -42,6 +42,7 @@ type RequestQueryGetLog = {
   command: 'logs';
   limit?: number;
   type?: 'info' | 'log' | 'warn' | 'error';
+  date?: [string, string, string];
 };
 
 type RequestQueryMenu = {
@@ -160,9 +161,8 @@ worker.on('config-set', async (request, reply) => {
 });
 
 worker.on('logs', async (request, reply) => {
-  // TODO: сделать параметр date [year, month, day] чтобы можно было выбрать нужный лог
   const query: RequestQueryGetLog = request.query as RequestQueryGetLog;
-  const date = getDate({ isMore: 'formatDate' });
+  const date = query.date ? `${query.date[0]}-${query.date[1]}-${query.date[2]}` : getDate({ isMore: 'formatDate' });
   const fs = resolve(import.meta.dirname, `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
   reply.type('text/html');
 
