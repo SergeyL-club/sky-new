@@ -75,7 +75,7 @@ export type DetailsDeal = {
   id: string;
   rate: number;
   requisite: string;
-  state: 'proposed' | 'deleted' | 'paid';
+  state: 'proposed' | 'deleted' | 'paid' | 'closed';
   symbol: 'btc' | 'usdt';
   type: number;
   voted: boolean;
