@@ -7,6 +7,7 @@ export const MTS_PAY: string = 'Bz8uYqXyPk';
 
 // адрес на службы (mts, qiwi, yandex, payeer)
 export const PAID_URL: string = 'http://145.239.95.220';
+export const PAID_SECRET: string = 'm0nEy$ecrET';
 
 // ид тг куда отправлять уведомления
 export const TG_ID: number = 974047084;
@@ -20,6 +21,12 @@ export const PASSWORD: string = 'Myipad132';
 
 // конфиг сделки
 export const IS_VERIFIED: boolean = true;
+
+// автоматическая отмена или открытие спора по истечению времени телефона
+export const TIMER_PHONE: boolean = true;
+export const TIME_DISPUTE_TIMER_PHONE: number = 1200000;
+export const TIME_CANCEL_TIMER_PHONE: number = 1200000;
+export const DELAY_TIMER_PHONE: number = 1000;
 
 // конфиг браузера
 export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 60000; // ожидание ответа страницы или других загрузок
