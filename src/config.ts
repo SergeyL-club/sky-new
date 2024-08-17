@@ -25,7 +25,6 @@ export const IS_VERIFIED: boolean = true;
 // автоматическая отмена или открытие спора по истечению времени телефона
 export const TIMER_PHONE: boolean = true;
 export const TIME_DISPUTE_TIMER_PHONE: number = 1200000;
-export const TIME_CANCEL_TIMER_PHONE: number = 30000;
 export const DELAY_TIMER_PHONE: number = 1000;
 
 // конфиг браузера
