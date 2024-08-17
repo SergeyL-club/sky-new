@@ -157,6 +157,20 @@ class WorkerRedis {
       return null;
     }
   };
+
+  delPhoneDeal = async (dealId: string) => {
+    try {
+      const phone = await this.getPhoneDeal(dealId);
+      if (!phone) return false;
+
+      const path = (await this.getConfig('DATA_PATH_REDIS_PHONE')) as string;
+      await this.redis.del(path + ':' + phone.requisite.text);
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
 }
 
 const worker = new WorkerRedis();
