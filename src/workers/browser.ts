@@ -451,7 +451,7 @@ class WorkerBrowser {
       });
     });
 
-  evalute = async <Type>({ page, code }: { page?: Page; code: string }) => {
+  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0) => {
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
     // проверяем page
     if (page) this.injectStatic(page);

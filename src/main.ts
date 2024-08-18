@@ -55,11 +55,13 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const getNewDeals = async (deals: CacheDeal[]) => {
     const oldDeals = await redis.getCacheDeals();
 
-    const findNewDeals = deals.filter((now) => {
-      const candidate = oldDeals.find((old) => now.id === old.id);
-      const actualState = ['proposed', 'paid', 'closed'];
-      return (!candidate || now.state !== candidate.state) && actualState.includes(now.state);
-    });
+    const findNewDeals = deals
+      .filter((now) => {
+        const candidate = oldDeals.find((old) => now.id === old.id);
+        const actualState = ['proposed', 'paid', 'closed'];
+        return (!candidate || now.state !== candidate.state) && actualState.includes(now.state);
+      })
+      .map((now) => ({ id: now.id, state: now.state }));
     const findCancelDeals = oldDeals
       .filter((old) => deals.find((now) => now.id === old.id) === undefined)
       .filter((old) => old.state !== 'closed')
@@ -110,7 +112,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
     }
 
-    if (data.dispute !== null) return await disputDeal(redis, data);
+    if (!data.dispute) return await disputDeal(redis, data);
 
     switch (data.state) {
       case 'proposed':
