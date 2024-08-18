@@ -73,7 +73,7 @@ class WorkerServer {
 
   onNotifyMessage = async (request: ApiRequest, reply: FastifyReply) => {
     const data = request.body;
-    loggerServer.log('Уведомление о поступлении, данные:', data);
+    loggerServer.log({ obj: data }, 'Уведомление о поступлении, данные:');
     const srcSign = data.sign;
     delete data.sign;
     const tmp: string[] = [];
