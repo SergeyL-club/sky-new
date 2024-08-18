@@ -100,6 +100,9 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       case 'closed':
         return await closedDeal(redis, browser, data);
     }
+    const answer = await sendGet('http://145.239.95.220:' + (data.symbol === 'btc' ? 8014 : 8024) + '/?deal_process=' + data.id);
+    if (answer) logger.log(`Отправили сделку ${data.id} на подтверждение`);
+    else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
   } catch (error: unknown) {
     logger.error(error);
   }

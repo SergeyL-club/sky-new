@@ -3,7 +3,7 @@ export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
 // конфиг mts
 export const MTS_PORT: number = 29980;
-export const MTS_PAY: string[] = ['Bz8uYqXyPk'];
+export const MTS_PAY: string[] = ['pcnOGGmbT', 'M7wEYcWleG'];
 
 // адрес на службы (mts, qiwi, yandex, payeer)
 export const PAID_URL: string = 'http://145.239.95.220';
@@ -16,8 +16,8 @@ export const TG_ID: number = 280212417;
 export const PORT: number = 13004;
 
 // майл и пороль для входа в sky
-export const EMAIL: string = 'nipici9440@acpeak.com';
-export const PASSWORD: string = 'Myipad132';
+export const EMAIL: string = 'support@bizoninvest.com';
+export const PASSWORD: string = 'fMwbh7XeXdTYNci';
 
 // конфиг сделки
 export const IS_VERIFIED: boolean = true;
