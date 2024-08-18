@@ -284,8 +284,8 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
   if (!dealProcessList.includes(deal.id)) dealProcessList.push(deal.id);
   // check pay
-  const lotPay = (await redis.getsConfig(['MTS_PAY'])) as string[][];
-  const lotIndex = lotPay.findIndex((el) => el.find((str) => str === deal.lot.id));
+  const lotPay = (await redis.getConfig('MTS_PAY')) as string[];
+  const lotIndex = lotPay.findIndex((el) => el === deal.lot.id);
   if (lotIndex === -1) {
     await ignoreDeal(redis, deal);
     logger.warn(`Сделка ${deal.id} не найден нужный порт для обработки (${deal.lot.id}, ${JSON.stringify(lotPay)})`);
