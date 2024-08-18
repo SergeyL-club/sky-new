@@ -424,7 +424,7 @@ class WorkerBrowser {
           const headers = request.headers();
           if ('authorization' in headers)
             localPage.evaluate((headers) => {
-              (window as unknown as { key: string })['key'] = headers['authorization'];
+              (window as unknown as { key: string })['key'] = headers['authorization'].split(' ')[1];
             }, headers);
         });
         localPage
