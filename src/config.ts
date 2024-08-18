@@ -37,8 +37,8 @@ export const DELAY_EVENT_MAX: number = 100; // максимальная заде
 export const DELAY_AUTH: number = 5000; // ожидание автоматического перехода сайтом, переключение формы с поролем
 
 // селекторы для авторизации (если список - 0:ru 1:en)
-export const SELECTOR_INPUT_EMAIL: string = '//input[@name="email"]';
-export const SELECTOR_INPUT_PASSWORD: string = '//input[@name="password"]';
+export const SELECTOR_INPUT_EMAIL: string = 'input[name="email"]';
+export const SELECTOR_INPUT_PASSWORD: string = 'input[name="password"]';
 export const SELECTOR_ERROR: [string, string] = ['//span[text()="Ошибка 404"]', '//span[text()="Error 404"]']; // селектор на ошибку 404
 export const SELECTOR_AUTH_FORM: [string, string] = ['//button[text()="Вход"]', '//button[text()="Enter"]']; // селектор на вход в форму авторизации
 export const SELECTOR_URL_AUTH: [string, string] = ['//a[text()="Войти"]', '//a[text()="Enter"]']; // селекторы на ссылку для открытия пароля в форме

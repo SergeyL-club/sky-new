@@ -367,8 +367,8 @@ class WorkerBrowser {
 
     await delay(delayAuth);
     const [selectorInputEmail, selectorInputPassword] = (await redis?.getsConfig(['SELECTOR_INPUT_EMAIL', 'SELECTOR_INPUT_PASSWORD'])) as [string, string];
-    let inputEmail = (await page.$x(selectorInputEmail))[0] || null;
-    let inputPassword = (await page.$x(selectorInputPassword))[0] || null;
+    let inputEmail = (await page.$(selectorInputEmail)) || null;
+    let inputPassword = (await page.$(selectorInputPassword)) || null;
     if (!inputEmail || !inputPassword) {
       const [selectorUrlAuthRu, selectorUrlAuthEn] = (await redis?.getConfig('SELECTOR_URL_AUTH')) as [string, string];
       const uriAuth = (await page.$x(selectorUrlAuthRu))[0] || (await page.$x(selectorUrlAuthEn))[0] || null;
@@ -380,8 +380,8 @@ class WorkerBrowser {
     }
 
     await delay(delayAuth);
-    inputEmail = (await page.$x(selectorInputEmail))[0] || null;
-    inputPassword = (await page.$x(selectorInputPassword))[0] || null;
+    inputEmail = (await page.$(selectorInputEmail)) || null;
+    inputPassword = (await page.$(selectorInputPassword)) || null;
     if (!inputEmail || !inputPassword) {
       loggerBrowser.warn('Даже после нажатия на "a" для открытия input password он так и не появлися');
       return false;
