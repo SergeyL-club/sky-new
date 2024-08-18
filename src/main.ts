@@ -56,7 +56,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const getNewDeals = async (deals: CacheDeal[]) => {
     const oldDeals = await redis.getCacheDeals();
 
-    const findNewDeals = deals.filter((now) => oldDeals.find((old) => now.id === old.id) === undefined);
+    const findNewDeals = deals.filter((now) => oldDeals.find((old) => now.id === old.id || now.state !== old.state) === undefined);
     const findCancelDeals = oldDeals
       .filter((old) => deals.find((now) => now.id === old.id) === undefined)
       .filter((old) => old.state !== 'closed')
@@ -96,10 +96,19 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
 
     if (ignoreList.includes(cacheDeal.id) || dealProcessList.includes(cacheDeal.id)) return;
 
+    const actualState = ['proposed', 'paid', 'closed'];
+    if (!actualState.includes(cacheDeal.state)) return;
+
     logger.info(`Изменение сделки ${cacheDeal.id} (${cacheDeal.state})`);
     const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve).catch(() => resolve({})))`;
     const data: DetailsDeal = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal;
     logger.info(`Получены актуальные данные сделки ${data.id} (${data.state})`);
+
+    if (data.state === 'proposed') {
+      const answer = await sendGet('http://145.239.95.220:' + (data.symbol === 'btc' ? 8014 : 8024) + '/?deal_process=' + data.id);
+      if (answer) logger.log(`Отправили сделку ${data.id} на подтверждение`);
+      else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
+    }
 
     if (data.dispute !== null) return await disputDeal(redis, data);
 
@@ -111,9 +120,6 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       case 'closed':
         return await closedDeal(redis, browser, data);
     }
-    const answer = await sendGet('http://145.239.95.220:' + (data.symbol === 'btc' ? 8014 : 8024) + '/?deal_process=' + data.id);
-    if (answer) logger.log(`Отправили сделку ${data.id} на подтверждение`);
-    else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
   } catch (error: unknown) {
     logger.error(error);
   }
