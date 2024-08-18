@@ -57,7 +57,8 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
     const findNewDeals = deals.filter((now) => {
       const candidate = oldDeals.find((old) => now.id === old.id);
-      return !candidate || now.state !== candidate.state;
+      const actualState = ['proposed', 'paid', 'closed'];
+      return (!candidate || now.state !== candidate.state) && actualState.includes(now.state);
     });
     const findCancelDeals = oldDeals
       .filter((old) => deals.find((now) => now.id === old.id) === undefined)
@@ -97,9 +98,6 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     }
 
     if (ignoreList.includes(cacheDeal.id)) return;
-
-    const actualState = ['proposed', 'paid', 'closed'];
-    if (!actualState.includes(cacheDeal.state)) return;
 
     logger.info(`Изменение сделки ${cacheDeal.id} (${cacheDeal.state})`);
     const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve).catch(() => resolve({})))`;

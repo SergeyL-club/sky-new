@@ -181,13 +181,10 @@ class WorkerRedis {
       const phones = await this.redis.keys(path + ':*');
       for (let indexPhone = 0; indexPhone < phones.length; indexPhone++) {
         const pathPhone = phones[indexPhone];
-        console.log(pathPhone);
         const data = await this.redis.get(pathPhone);
-        console.log(data);
         if (!data) continue;
         const phone = JSON.parse(data) as PhoneServiceData;
-        console.log(phone);
-        if (phone.id === id) return phone;
+        if (phone.id == id) return phone;
       }
       return null;
     } catch (e: unknown) {
