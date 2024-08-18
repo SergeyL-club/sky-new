@@ -105,6 +105,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve).catch(() => resolve({})))`;
     const data: DetailsDeal = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal;
     logger.info(`Получены актуальные данные сделки ${data.id} (${data.state})`);
+    console.log(data);
 
     if (data.state === 'proposed') {
       const answer = await sendGet('http://145.239.95.220:' + (data.symbol === 'btc' ? 8014 : 8024) + '/?deal_process=' + data.id);
