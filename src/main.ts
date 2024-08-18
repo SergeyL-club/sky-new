@@ -398,19 +398,31 @@ const main = () =>
       }
     };
 
+    const next = () => {
+      browser.updateKeys().then(() => {
+        loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+        pollingDeals(redis, getDeals.bind(null, redis, browser));
+        pollingPhone(redis, timerPhone.bind(null, redis, browser));
+        workerServer.on('message', (data) => {
+          if ('command' in data && data.command === 'balance') balance.call(null, redis, data.phone);
+        });
+      });
+    };
+
+    const initBrowser = () => {
+      browser
+        .initBrowser()
+        .then(next)
+        .catch(() => {
+          logger.warn(`Не удалось запустить браузер, попытка запустить`);
+          initBrowser();
+        });
+    };
+
     try {
       redis.initClient().then(() => {
         server.init();
-      });
-      browser.initBrowser().then(() => {
-        browser.updateKeys().then(() => {
-          loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-          pollingDeals(redis, getDeals.bind(null, redis, browser));
-          pollingPhone(redis, timerPhone.bind(null, redis, browser));
-          workerServer.on('message', (data) => {
-            if ('command' in data && data.command === 'balance') balance.call(null, redis, data.phone);
-          });
-        });
+        initBrowser();
       });
     } catch (error: unknown) {
       logger.error(error);
