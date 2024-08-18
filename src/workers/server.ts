@@ -14,6 +14,8 @@ import { getDate } from '../utils/dateTime.js';
 import { getLogs, readLogs } from '../utils/htmlLog.js';
 import md5 from 'md5';
 import { fileURLToPath } from 'node:url';
+import fastifyFormbody from '@fastify/formbody';
+import fastifyCors from '@fastify/cors';
 
 type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
 type Events = 'config-set' | 'config-get' | 'logs' | 'menu';
@@ -110,6 +112,8 @@ class WorkerServer {
 
     loggerServer.log(`Инициализация fastify`);
     this.fastify = fastify({ logger: false });
+    this.fastify.register(fastifyCors);
+    this.fastify.register(fastifyFormbody);
 
     loggerServer.log(`Создание хука на путь /notify`);
     this.fastify.post('/notify', this.onNotifyMessage.bind(this));
@@ -129,7 +133,7 @@ class WorkerServer {
     loggerServer.log(`Получение порта`);
     const PORT = ((await redis?.getConfig('PORT')) ?? CONFIG['PORT']) as number;
     loggerServer.log(`Запуск listen`);
-    this.fastify.listen({ port: PORT }, (err, addr) => {
+    this.fastify.listen({ port: PORT, host: '0.0.0.0' }, (err, addr) => {
       if (!err) loggerServer.info(`Завершение инициализации сервера [${addr}]`);
     });
   };
