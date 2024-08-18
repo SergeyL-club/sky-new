@@ -6,12 +6,13 @@ import type { Remote } from 'comlink';
 import type { CacheDeal, KeyOfConfig, PhoneServiceData } from './workers/redis.js';
 import type { DetailsDeal } from './workers/browser.js';
 
-import path from 'path';
+import path, { dirname } from 'path';
 import { wrap } from 'comlink';
 import logger, { loggerBrowser } from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
 import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
+import { fileURLToPath } from 'node:url';
 
 const ignoreList = [] as string[];
 const dealProcessList = [] as string[];
@@ -355,9 +356,9 @@ const main = () =>
   new Promise<number>(() => {
     // workers
     logger.log(`Запуск потоков`);
-    const workerRedis = new Worker(path.resolve(import.meta.dirname, './workers/redis.js'));
-    const workerBrowser = new Worker(path.resolve(import.meta.dirname, './workers/browser.js'));
-    const workerServer = new Worker(path.resolve(import.meta.dirname, './workers/server.js'));
+    const workerRedis = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/redis.js'));
+    const workerBrowser = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/browser.js'));
+    const workerServer = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/server.js'));
 
     // adapters main
     logger.log(`Создание адаптеров`);

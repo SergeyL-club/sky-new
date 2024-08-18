@@ -11,10 +11,11 @@ import { parentPort } from 'node:worker_threads';
 import { PuppeteerExtra } from 'puppeteer-extra';
 import * as CONFIG from '../config.js';
 import { readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { expose } from 'comlink';
 import md5 from 'md5';
+import { fileURLToPath } from 'node:url';
 
 type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
 type WindowCustom = {
@@ -177,11 +178,11 @@ class WorkerBrowser {
 
   injectStatic = async (page: Page) => {
     // await page.waitForNavigation({ timeout: LOCAL_CONFIG['WAIT_TIMEOUT'], waitUntil: LOCAL_CONFIG['WAIT_UNTIL'] });
-    const files: string[] = readdirSync(resolve(import.meta.dirname, `../../statics`));
+    const files: string[] = readdirSync(resolve(dirname(fileURLToPath(import.meta.url)), `../../statics`));
 
     for (let index = 0; index < files.length; index++) {
       const fileName = files[index];
-      await page.addScriptTag({ path: resolve(import.meta.dirname, `../../statics/${fileName}`) });
+      await page.addScriptTag({ path: resolve(dirname(fileURLToPath(import.meta.url)), `../../statics/${fileName}`) });
     }
   };
 

@@ -9,10 +9,11 @@ import * as CONFIG from '../config.js';
 import { fastify } from 'fastify';
 import { expose, wrap } from 'comlink';
 import { loggerServer } from '../utils/logger.js';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { getDate } from '../utils/dateTime.js';
 import { getLogs, readLogs } from '../utils/htmlLog.js';
 import md5 from 'md5';
+import { fileURLToPath } from 'node:url';
 
 type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
 type Events = 'config-set' | 'config-get' | 'logs' | 'menu';
@@ -163,7 +164,7 @@ worker.on('config-set', async (request, reply) => {
 worker.on('logs', async (request, reply) => {
   const query: RequestQueryGetLog = request.query as RequestQueryGetLog;
   const date = query.date ? `${JSON.parse(query.date)[0]}-${JSON.parse(query.date)[1]}-${JSON.parse(query.date)[2]}` : getDate({ isMore: 'formatDate' });
-  const fs = resolve(import.meta.dirname, `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
+  const fs = resolve(dirname(fileURLToPath(import.meta.url)), `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
   reply.type('text/html');
 
   const data = getLogs(readLogs(fs, Number(query.limit ?? 10000000000000000)));
