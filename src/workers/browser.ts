@@ -102,12 +102,14 @@ class WorkerBrowser {
   private authKey: string;
   private deals: Page | null;
   private browser: Browser | null;
+  private authCookie: string;
 
   constructor() {
     this.proxyParams = '';
     this.isReAuth = false;
     this.browser = null;
     this.deals = null;
+    this.authCookie = '';
     this.authKey = '';
     this.keys = {};
     if (WorkerBrowser.instance) return WorkerBrowser.instance;
@@ -418,6 +420,13 @@ class WorkerBrowser {
 
       this.injectStatic(localPage).then(() => {
         let first = true;
+        localPage.on('request', (request) => {
+          const headers = request.headers();
+          if ('authorization' in headers)
+            localPage.evaluate((headers) => {
+              (window as unknown as { key: string })['key'] = headers['authorization'];
+            }, headers);
+        });
         localPage
           .exposeFunction('keysSocketUpdate', (data: string) => {
             this.keys = JSON.parse(data);

@@ -7,5 +7,7 @@ const getCookie = (key) => {
     if (key == localKey) return value.split(';').join('');
   }
 
+  if (window['key']) return window['key'];
+
   return undefined;
 };
