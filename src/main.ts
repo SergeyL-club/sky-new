@@ -46,15 +46,11 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const getNewDeals = async (deals: CacheDeal[]) => {
     const oldDeals = await redis.getCacheDeals();
 
-    const findNewDeals = deals.filter((now) => {
-      const oldIndex = oldDeals.findIndex((old) => now.id === old.id);
-      return oldIndex === -1 || oldDeals[oldIndex].state !== now.state;
-    });
+    const findNewDeals = deals.filter((now) => oldDeals.find((old) => now.id === old.id) === undefined);
     const findCancelDeals = oldDeals
       .filter((old) => deals.find((now) => now.id === old.id) === undefined)
       .filter((old) => old.state !== 'closed')
-      .map((el) => ({ ...el, state: 'cancel' }));
-    // const findCancelDeals = [] as CacheDeal[];
+      .map((old) => ({ id: old.id, state: 'cancel' }));
 
     return findNewDeals.concat(findCancelDeals);
   };
@@ -77,10 +73,15 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
 async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, cacheDeal: CacheDeal) {
   try {
-    if (ignoreList.includes(cacheDeal.id) && (cacheDeal.state === 'deleted' || cacheDeal.state === 'closed')) {
+    if (ignoreList.includes(cacheDeal.id) && (cacheDeal.state === 'cancel' || cacheDeal.state === 'closed')) {
       const index = ignoreList.indexOf(cacheDeal.id);
       if (index !== -1) ignoreList.splice(index, 1);
       return;
+    }
+
+    if (cacheDeal.state === 'cancel') {
+      logger.info(`Сделка ${cacheDeal.id} ушла из списка (cancel), очищаем её`);
+      return await redis.delPhoneDeal(cacheDeal.id);
     }
 
     if (ignoreList.includes(cacheDeal.id) || dealProcessList.includes(cacheDeal.id)) return;
@@ -115,22 +116,6 @@ async function ignoreDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   // const phone = await redis.getPhoneDeal(deal.id);
   // const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
   // await sendTgNotify(`(sky) Сделка ${deal.id} ушла в ошибку, обработайте сами (${phone?.id}, ${phone?.requisite.text})`, tgId, mainPort);
-}
-
-async function cancelDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
-  const phone = await redis.getPhoneDeal(deal.id);
-  if (phone) {
-    logger.log(`Сделка ${deal.id} найден телефон в базе, особождаем`);
-    await redis.delPhoneDeal(deal.id);
-  }
-
-  const evaluateFunc = `new Promise((resolve) => cancelDeal('[authKey]', '${deal.id}').then(() => resolve(true)).catch(() => resolve(false)))`;
-  const result = await browser.evalute({ code: evaluateFunc });
-  if (result) {
-    logger.info(`Успешная отмена сделки (${deal.id})`);
-  } else logger.warn(`Не удалось отменить сделку (${deal.id}, ${result})`);
-  const index = dealProcessList.indexOf(deal.id);
-  if (index !== -1) dealProcessList.splice(index, 1);
 }
 
 async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
@@ -186,8 +171,10 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     const lotPay = (await redis.getsConfig(['MTS_PAY'])) as string[][];
     const lotIndex = lotPay.findIndex((el) => el.find((str) => str === deal.lot.id));
     if (lotIndex === -1) {
+      await ignoreDeal(redis, deal);
       logger.warn(`Сделка ${deal.id} не найден нужный порт для обработки (${deal.lot.id}, ${JSON.stringify(lotPay)})`);
-      return await cancelDeal(redis, browser, deal);
+      const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+      return await sendTgNotify(`(sky) Сделка ${deal.id} не удалось найти порт для отправки сервиса, обработайте сами`, tgId, mainPort);
     }
 
     // get port
@@ -219,8 +206,10 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
       return await requisiteDeal(redis, browser, deal, port);
     } else logger.warn(`Не удалось подтвердить принятие сделки (${deal.id}, ${result})`);
   } else {
-    logger.log(`Пользователь (${deal.buyer.nickname}) не прошёл верификацию, отмена сделки (${deal.id})`);
-    await cancelDeal(redis, browser, deal);
+    await ignoreDeal(redis, deal);
+    logger.log(`Пользователь (${deal.buyer.nickname}) не прошёл верификацию, уведомление (${deal.id})`);
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+    return await sendTgNotify(`(sky) Сделка ${deal.id} не прошла верификацию пользователя, обработайте сами`, tgId, mainPort);
   }
 }
 
@@ -298,8 +287,10 @@ async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const lotPay = (await redis.getsConfig(['MTS_PAY'])) as string[][];
   const lotIndex = lotPay.findIndex((el) => el.find((str) => str === deal.lot.id));
   if (lotIndex === -1) {
+    await ignoreDeal(redis, deal);
     logger.warn(`Сделка ${deal.id} не найден нужный порт для обработки (${deal.lot.id}, ${JSON.stringify(lotPay)})`);
-    return await cancelDeal(redis, browser, deal);
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+    return await sendTgNotify(`(sky) Сделка ${deal.id} не найден порт для службы, обработайте сами`, tgId, mainPort);
   }
 
   // get port
