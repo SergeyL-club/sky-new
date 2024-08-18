@@ -112,7 +112,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
     }
 
-    if (!(typeof data.dispute === 'undefined') && data.dispute !== null) return await disputDeal(redis, data);
+    if (data.dispute !== null) return await disputDeal(redis, data);
 
     switch (data.state) {
       case 'proposed':
@@ -426,6 +426,8 @@ const main = () =>
       for (let indexDispute = 0; indexDispute < phonesDispute.length; indexDispute++) {
         const phone = phonesDispute[indexDispute];
         await redis.delPhoneDeal(phone.deal_id);
+        const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+        await sendTgNotify(`(sky) Сделка ${phone.deal_id} ушла в таймоут, проверьте её (${phone.id}, ${phone.requisite.text})`, tgId, mainPort);
         // Promise.resolve(disputePhone(redis, browser, phone));
       }
     };
