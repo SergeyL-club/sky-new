@@ -20,7 +20,7 @@ const dealProcessList = [] as string[];
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
   const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
-  const code = (data: ReturnType<typeof params>) => `new Promise((resolve) => getDeals('[authKey]', ${JSON.stringify(data)}).then(resolve).catch(() => resolve([])))`;
+  const code = (data: ReturnType<typeof params>) => `new Promise((resolve, reject) => getDeals('[authKey]', ${JSON.stringify(data)}).then(resolve).cath(reject))`;
 
   const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
   const usdtLimit = await redis.getConfig('POLLING_DEALS_LIMIT_USDT');
