@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "start": "node /build/main.js --headless",
+    "start": "node ./build/main.js",
+    "start-linux": "node build/main.js --headless",
     "dev": "nodemon",
     "lint": "eslint \"src/**/*.{js,ts}\"",
     "lint:fix": "eslint \".\\src\\**\\*.{js,ts}\" --fix",
