@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { rimraf } from 'rimraf';
 import { fileURLToPath } from 'url';
+import alias from 'esbuild-plugin-alias';
 
 const walk = (dir, done) => {
   var results = [];
@@ -52,6 +53,14 @@ const buildMain = async () =>
           '.ts': 'ts',
           '.js': 'js',
         },
+        plugins: [
+          alias({
+            entries: {
+              'import.meta.url': '__filename',
+              'import.meta.dirname': '__dirname',
+            },
+          }),
+        ],
       });
     });
   });
