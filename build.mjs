@@ -57,7 +57,7 @@ const buildMain = async () =>
             name: 'import-meta-to-dirname',
             setup(build) {
               build.onLoad({ filter: /\.ts$/ }, async (args) => {
-                let source = await require('fs').promises.readFile(args.path, 'utf8');
+                let source = fs.readFileSync(args.path, 'utf-8');
                 source = source.replace(/import\.meta\.url/g, '__filename');
                 source = source.replace(/import\.meta\.dirname/g, '__dirname');
                 return { contents: source, loader: 'ts' };
