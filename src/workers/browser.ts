@@ -29,6 +29,7 @@ export type Keys = {
 export type Params = {
   headless: boolean;
   args: string[];
+  executablePath: string;
   defaultViewport: {
     width: number;
     height: number;
@@ -147,6 +148,7 @@ class WorkerBrowser {
   initParams = (headless: boolean = false) => {
     const params = {} as Params;
     params['headless'] = headless;
+    if (headless) params['executablePath'] = '/usr/bin/chromium';
     params['args'] = ['--no-sandbox', '--no-default-browser-check', ...(this.proxyParams && [`--proxy-server=${(<ProxyData>this.proxyParams).url}`])];
     params['defaultViewport'] = { width: 1100, height: 600 };
     params['ignoreDefaultArgs'] = ['--enable-automation'];
@@ -207,7 +209,7 @@ class WorkerBrowser {
       const puppeteerExtra = new PuppeteerExtra(puppeteer as unknown as VanillaPuppeteer);
       puppeteerExtra.use(stealsPlugin());
 
-      this.browser = await puppeteerExtra.launch({ ...params, ...(headless && { executablePath: '/usr/bin/chromium' }) });
+      this.browser = await puppeteerExtra.launch(params);
 
       // set page deals
       const url = 'https://skycrypto.me/deals';
