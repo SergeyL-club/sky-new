@@ -326,7 +326,7 @@ class WorkerBrowser {
 
     const [selectorErrorRu, selectorErrorEn] = (await redis?.getConfig('SELECTOR_ERROR')) as [string, string];
     const urlMainAuth = (await redis?.getConfig('URL_MAIN_AUTH')) as string;
-    const error = (await localPage.$x(selectorErrorRu)) || (await localPage.$x(selectorErrorEn)) || null;
+    let error = (await localPage.$x(selectorErrorRu)) || (await localPage.$x(selectorErrorEn)) || null;
     const checkMain = localPage.url() == urlMainAuth || localPage.url() == `${urlMainAuth}/`;
 
     if (error || checkMain || localPage.url() != url) {
@@ -342,6 +342,8 @@ class WorkerBrowser {
 
     loggerBrowser.log(`Завершили проверку авторизации (${page.url()})`);
 
+    error = (await localPage.$x(selectorErrorRu)) || (await localPage.$x(selectorErrorEn)) || null;
+    console.log(error);
     const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
     await delay(random(delayEventMin, delayEventMax));
     return page;
