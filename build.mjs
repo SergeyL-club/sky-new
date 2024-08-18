@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { rimraf } from 'rimraf';
 import { fileURLToPath } from 'url';
-import alias from 'esbuild-plugin-alias';
 
 const walk = (dir, done) => {
   var results = [];
@@ -54,12 +53,17 @@ const buildMain = async () =>
           '.js': 'js',
         },
         plugins: [
-          alias({
-            entries: {
-              'import.meta.url': '__filename',
-              'import.meta.dirname': '__dirname',
+          {
+            name: 'import-meta-to-dirname',
+            setup(build) {
+              build.onLoad({ filter: /\.ts$/ }, async (args) => {
+                let source = await require('fs').promises.readFile(args.path, 'utf8');
+                source = source.replace(/import\.meta\.url/g, '__filename');
+                source = source.replace(/import\.meta\.dirname/g, '__dirname');
+                return { contents: source, loader: 'ts' };
+              });
             },
-          }),
+          },
         ],
       });
     });
