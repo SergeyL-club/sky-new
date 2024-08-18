@@ -65,7 +65,9 @@ export const renderTextLine = <T extends string>(msg: T, level: Levels, html = f
 const destinationStreamFile = (level: string): DestinationStream => ({
   write: (msg) => {
     const data = JSON.parse(msg);
+    const dirPathLogs = path.resolve(dirname(fileURLToPath(import.meta.url)), `../../logs`);
     const dirPath = path.resolve(dirname(fileURLToPath(import.meta.url)), `../../logs/${getDate({ isMore: 'formatDate', actualDate: data['time'] })}`);
+    if (!existsSync(dirPathLogs)) mkdirSync(dirPathLogs);
     if (!existsSync(dirPath)) mkdirSync(dirPath);
     const filePath = `${dirPath}/[${getDate({ isMore: 'formatDate', actualDate: data['time'] })}]${level}.log`;
 
