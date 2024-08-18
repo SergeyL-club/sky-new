@@ -148,7 +148,7 @@ class WorkerBrowser {
   initParams = (headless: boolean = false) => {
     const params = {} as Params;
     params['headless'] = headless;
-    if (headless) params['executablePath'] = '/usr/bin/chromium';
+    // if (headless) params['executablePath'] = '/usr/bin/chromium';
     params['args'] = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -217,7 +217,7 @@ class WorkerBrowser {
       puppeteerExtra.use(stealsPlugin());
 
       loggerBrowser.info(`Создание браузера`);
-      this.browser = await puppeteerExtra.launch({ ...params, dumpio: true });
+      this.browser = await puppeteerExtra.launch(params);
 
       // set page deals
       loggerBrowser.info(`Создание основной страницы`);
