@@ -335,12 +335,12 @@ class WorkerBrowser {
       const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
       await delay(random(delayEventMin, delayEventMax));
       if (!(await this.auth(localPage))) return null;
-      loggerBrowser.log('Переходит на нужную ссылку');
+      loggerBrowser.log(`Переходит на нужную ссылку (${page.url()}, ${url})`);
       await this.goto(localPage, url);
       this.isReAuth = false;
     }
 
-    loggerBrowser.log('Завершили проверку авторизации');
+    loggerBrowser.log(`Завершили проверку авторизации (${page.url()})`);
 
     const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
     await delay(random(delayEventMin, delayEventMax));
