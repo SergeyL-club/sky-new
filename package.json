@@ -42,7 +42,7 @@
     "md5": "^2.3.0",
     "path": "^0.12.7",
     "pino": "^9.2.0",
-    "puppeteer": "^22.13.0",
+    "puppeteer": "^17.0.0",
     "puppeteer-core": "^23.1.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
