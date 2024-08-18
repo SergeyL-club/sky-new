@@ -1,19 +1,18 @@
-import type { Browser, ElementHandle, Page } from 'puppeteer';
+import type { Browser, ElementHandle, Page, PuppeteerLifeCycleEvent } from 'puppeteer';
 import type { VanillaPuppeteer } from 'puppeteer-extra';
-// import type { Remote } from 'comlink';
+import type { Remote } from 'comlink';
 // import type WorkerServer from './server.js';
-// import type WorkerRedis from './redis.js';
+import type WorkerRedis from './redis.js';
 
 import stealsPlugin from 'puppeteer-extra-plugin-stealth';
 import { delay, random } from '../utils/dateTime.js';
 import { loggerBrowser } from '../utils/logger.js';
 import { parentPort } from 'node:worker_threads';
 import { PuppeteerExtra } from 'puppeteer-extra';
-import * as CONFIG from '../config.js';
 import { readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
-import { expose } from 'comlink';
+import { expose, wrap } from 'comlink';
 import md5 from 'md5';
 import { fileURLToPath } from 'node:url';
 
@@ -84,10 +83,9 @@ export type DetailsDeal = {
 };
 
 // local config in worker
-const LOCAL_CONFIG = { ...CONFIG };
 
 // channels
-// let redis: Remote<WorkerRedis> | null = null;
+let redis: Remote<WorkerRedis> | null = null;
 // let server: Remote<WorkerServer> | null = null;
 
 class WorkerBrowser {
@@ -148,7 +146,6 @@ class WorkerBrowser {
   initParams = (headless: boolean = false) => {
     const params = {} as Params;
     params['headless'] = headless;
-    // if (headless) params['executablePath'] = '/usr/bin/chromium';
     params['args'] = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -185,7 +182,6 @@ class WorkerBrowser {
   };
 
   injectStatic = async (page: Page) => {
-    // await page.waitForNavigation({ timeout: LOCAL_CONFIG['WAIT_TIMEOUT'], waitUntil: LOCAL_CONFIG['WAIT_UNTIL'] });
     const files: string[] = readdirSync(resolve(dirname(fileURLToPath(import.meta.url)), `../../statics`));
 
     for (let index = 0; index < files.length; index++) {
@@ -284,7 +280,8 @@ class WorkerBrowser {
   };
 
   goto = async (page: Page, url: string) => {
-    await page.goto(url, { timeout: LOCAL_CONFIG['WAIT_TIMEOUT'], waitUntil: LOCAL_CONFIG['WAIT_UNTIL'] });
+    const [timeout, unitl] = (await redis?.getsConfig(['WAIT_TIMEOUT', 'WAIT_UNTIL'])) as [number, PuppeteerLifeCycleEvent];
+    await page.goto(url, { timeout, waitUntil: unitl });
   };
 
   inputSet = async ({ input, page, text }: InputSet) => {
@@ -327,13 +324,16 @@ class WorkerBrowser {
       }
     }
 
-    const error = (await localPage.$(LOCAL_CONFIG['SELECTOR_ERROR'][0])) || (await localPage.$(LOCAL_CONFIG['SELECTOR_ERROR'][1])) || null;
-    const checkMain = localPage.url() == LOCAL_CONFIG['URL_MAIN_AUTH'] || localPage.url() == `${LOCAL_CONFIG['URL_MAIN_AUTH']}/`;
+    const [selectorErrorRu, selectorErrorEn] = (await redis?.getConfig('SELECTOR_ERROR')) as [string, string];
+    const urlMainAuth = (await redis?.getConfig('URL_MAIN_AUTH')) as string;
+    const error = (await localPage.$x(selectorErrorRu)) || (await localPage.$x(selectorErrorEn)) || null;
+    const checkMain = localPage.url() == urlMainAuth || localPage.url() == `${urlMainAuth}/`;
 
     if (error || checkMain || localPage.url() != url) {
       this.isReAuth = true;
       loggerBrowser.log('Не авторизирован, попытка авторизироваться');
-      await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
+      const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
+      await delay(random(delayEventMin, delayEventMax));
       if (!(await this.auth(localPage))) return null;
       loggerBrowser.log('Переходит на нужную ссылку');
       await this.goto(localPage, url);
@@ -342,51 +342,63 @@ class WorkerBrowser {
 
     loggerBrowser.log('Завершили проверку авторизации');
 
-    await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
+    const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
+    await delay(random(delayEventMin, delayEventMax));
     return page;
   };
 
   auth = async (page: Page) => {
     loggerBrowser.log('Переход на главную страницу');
-    await this.goto(page, LOCAL_CONFIG['URL_MAIN_AUTH']);
+    const delayAuth = (await redis?.getConfig('DELAY_AUTH')) as number;
+    const urlMainAuth = (await redis?.getConfig('URL_MAIN_AUTH')) as string;
+    await this.goto(page, urlMainAuth);
 
-    const btnAuth = (await page.$(LOCAL_CONFIG['SELECTOR_AUTH_FORM'][0])) || (await page.$(LOCAL_CONFIG['SELECTOR_AUTH_FORM'][1])) || null;
+    await delay(delayAuth);
+    const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
+    const [selectorAuthFormRu, selectorAuthFormEn] = (await redis?.getConfig('SELECTOR_AUTH_FORM')) as [string, string];
+    const btnAuth = (await page.$x(selectorAuthFormRu))[0] || (await page.$x(selectorAuthFormEn))[0] || null;
     if (!btnAuth) {
       loggerBrowser.warn('Неудалось найти кнопку входа (главная страница)');
       return false;
     }
-    await btnAuth.click({ delay: random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']) });
+    await (btnAuth as ElementHandle<Element>).click({ delay: random(delayEventMin, delayEventMax) });
 
-    let inputEmail = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_EMAIL'])) || null;
-    let inputPassword = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_PASSWORD'])) || null;
+    await delay(delayAuth);
+    const [selectorInputEmail, selectorInputPassword] = (await redis?.getsConfig(['SELECTOR_INPUT_EMAIL', 'SELECTOR_INPUT_PASSWORD'])) as [string, string];
+    let inputEmail = (await page.$x(selectorInputEmail))[0] || null;
+    let inputPassword = (await page.$x(selectorInputPassword))[0] || null;
     if (!inputEmail || !inputPassword) {
-      const uriAuth = (await page.$(LOCAL_CONFIG['SELECTOR_URL_AUTH'][0])) || (await page.$(LOCAL_CONFIG['SELECTOR_URL_AUTH'][1])) || null;
+      const [selectorUrlAuthRu, selectorUrlAuthEn] = (await redis?.getConfig('SELECTOR_URL_AUTH')) as [string, string];
+      const uriAuth = (await page.$x(selectorUrlAuthRu))[0] || (await page.$x(selectorUrlAuthEn)) || null;
       if (!uriAuth) {
         loggerBrowser.warn('Не было найдена "a" для открытия input password');
         return false;
       }
-      await uriAuth.click({ delay: random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']) });
+      await (uriAuth as ElementHandle<Element>).click({ delay: random(delayEventMin, delayEventMax) });
     }
 
-    await delay(LOCAL_CONFIG['DELAY_AUTH']);
-    inputEmail = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_EMAIL'])) || null;
-    inputPassword = (await page.$(LOCAL_CONFIG['SELECTOR_INPUT_PASSWORD'])) || null;
+    await delay(delayAuth);
+    inputEmail = (await page.$x(selectorInputEmail))[0] || null;
+    inputPassword = (await page.$x(selectorInputPassword))[0] || null;
     if (!inputEmail || !inputPassword) {
       loggerBrowser.warn('Даже после нажатия на "a" для открытия input password он так и не появлися');
       return false;
     }
-    await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
-    await this.inputSet({ input: inputEmail, text: LOCAL_CONFIG['EMAIL'], page });
-    await delay(random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']));
-    await this.inputSet({ input: inputPassword, text: LOCAL_CONFIG['PASSWORD'], page });
 
-    const btnAuthForm = (await page.$(LOCAL_CONFIG['SELECTOR_BTN_AUTH'][0])) || (await page.$(LOCAL_CONFIG['SELECTOR_BTN_AUTH'][1])) || null;
+    const [email, password] = (await redis?.getsConfig(['EMAIL', 'PASSWORD'])) as [string, string];
+    await delay(random(delayEventMin, delayEventMax));
+    await this.inputSet({ input: inputEmail as ElementHandle<Element>, text: email, page });
+    await delay(random(delayEventMin, delayEventMax));
+    await this.inputSet({ input: inputPassword as ElementHandle<Element>, text: password, page });
+
+    const [selectorBtnAuthRu, selectorBtnAuthEn] = (await redis?.getConfig('SELECTOR_BTN_AUTH')) as [string, string];
+    const btnAuthForm = (await page.$x(selectorBtnAuthRu))[0] || (await page.$x(selectorBtnAuthEn))[0] || null;
     if (!btnAuthForm) {
       loggerBrowser.warn('Неудалось найти кнопку входа (форма)');
       return false;
     }
-    await btnAuthForm.click({ delay: random(LOCAL_CONFIG['DELAY_EVENT_MIN'], LOCAL_CONFIG['DELAY_EVENT_MAX']) });
-    await delay(LOCAL_CONFIG['DELAY_AUTH']);
+    await (btnAuthForm as ElementHandle<Element>).click({ delay: random(delayEventMin, delayEventMax) });
+    await delay(delayAuth);
 
     return true;
   };
@@ -465,7 +477,7 @@ parentPort?.on('message', async (message) => {
   if ('command' in message)
     switch (message.command as ServerCommands) {
       case 'redis':
-        // redis = wrap<WorkerRedis>(message['port']);
+        redis = wrap<WorkerRedis>(message['port']);
         break;
       case 'server':
         // server = wrap<WorkerServer>(message['port']);
