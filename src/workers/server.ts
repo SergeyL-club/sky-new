@@ -40,9 +40,9 @@ type RequestQuerySetConfig = {
 
 type RequestQueryGetLog = {
   command: 'logs';
-  limit?: number;
+  limit?: string;
   type?: 'info' | 'log' | 'warn' | 'error';
-  date?: [string, string, string];
+  date?: string;
 };
 
 type RequestQueryMenu = {
@@ -162,11 +162,11 @@ worker.on('config-set', async (request, reply) => {
 
 worker.on('logs', async (request, reply) => {
   const query: RequestQueryGetLog = request.query as RequestQueryGetLog;
-  const date = query.date ? `${query.date[0]}-${query.date[1]}-${query.date[2]}` : getDate({ isMore: 'formatDate' });
+  const date = query.date ? `${JSON.parse(query.date)[0]}-${JSON.parse(query.date)[1]}-${JSON.parse(query.date)[2]}` : getDate({ isMore: 'formatDate' });
   const fs = resolve(import.meta.dirname, `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
   reply.type('text/html');
 
-  const data = getLogs(readLogs(fs, query.limit ?? 10000000000000000));
+  const data = getLogs(readLogs(fs, Number(query.limit ?? 10000000000000000)));
   return reply.status(200).send(data);
 });
 
