@@ -210,7 +210,7 @@ class WorkerBrowser {
       puppeteerExtra.use(stealsPlugin());
 
       loggerBrowser.info(`Создание браузера`);
-      this.browser = await puppeteerExtra.launch(params);
+      this.browser = await puppeteerExtra.launch({ ...params, dumpio: true });
 
       // set page deals
       const url = 'https://skycrypto.me/deals';
