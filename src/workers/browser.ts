@@ -369,7 +369,7 @@ class WorkerBrowser {
     let inputPassword = (await page.$x(selectorInputPassword))[0] || null;
     if (!inputEmail || !inputPassword) {
       const [selectorUrlAuthRu, selectorUrlAuthEn] = (await redis?.getConfig('SELECTOR_URL_AUTH')) as [string, string];
-      const uriAuth = (await page.$x(selectorUrlAuthRu))[0] || (await page.$x(selectorUrlAuthEn)) || null;
+      const uriAuth = (await page.$x(selectorUrlAuthRu))[0] || (await page.$x(selectorUrlAuthEn))[0] || null;
       if (!uriAuth) {
         loggerBrowser.warn('Не было найдена "a" для открытия input password');
         return false;
