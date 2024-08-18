@@ -421,13 +421,6 @@ class WorkerBrowser {
 
       this.injectStatic(localPage).then(() => {
         let first = true;
-        localPage.on('request', (request) => {
-          const headers = request.headers();
-          if ('authorization' in headers)
-            localPage.evaluate((headers) => {
-              (window as unknown as { key: string })['key'] = headers['authorization'].split(' ')[1];
-            }, headers);
-        });
         localPage
           .exposeFunction('keysSocketUpdate', (data: string) => {
             this.keys = JSON.parse(data);
