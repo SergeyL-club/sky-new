@@ -209,6 +209,7 @@ class WorkerBrowser {
       const puppeteerExtra = new PuppeteerExtra(puppeteer as unknown as VanillaPuppeteer);
       puppeteerExtra.use(stealsPlugin());
 
+      loggerBrowser.info(`Создание браузера`);
       this.browser = await puppeteerExtra.launch(params);
 
       // set page deals
