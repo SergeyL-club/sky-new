@@ -17,7 +17,7 @@ const getDeals = async (key, params) =>
         if (response.ok) {
           return response.json();
         } else {
-          throw new Error('Network response was not ok.');
+          throw new Error(response);
         }
       })
       .then((e) => {
