@@ -15,7 +15,6 @@ import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlock
 import { fileURLToPath } from 'node:url';
 
 const ignoreList = [] as string[];
-const dealProcessList = [] as string[];
 
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
@@ -94,7 +93,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       return await redis.delPhoneDeal(cacheDeal.id);
     }
 
-    if (ignoreList.includes(cacheDeal.id) || dealProcessList.includes(cacheDeal.id)) return;
+    if (ignoreList.includes(cacheDeal.id)) return;
 
     const actualState = ['proposed', 'paid', 'closed'];
     if (!actualState.includes(cacheDeal.state)) return;
@@ -146,8 +145,6 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
     await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
   }
-  const index = dealProcessList.indexOf(phone.deal_id);
-  if (index !== -1) dealProcessList.splice(index, 1);
 }
 
 async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
@@ -161,8 +158,6 @@ async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
 
   const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
   await sendTgNotify(`(sky) Сделка ${deal.id} была открыта в споре`, tgId, mainPort);
-  const index = dealProcessList.indexOf(deal.id);
-  if (index !== -1) dealProcessList.splice(index, 1);
 }
 
 async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
@@ -174,12 +169,9 @@ async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
   const response = await browser.evalute({ code: evaluateFunc });
   if (!response) logger.warn(`Сделка ${deal.id} не удалось поставить лайк`);
   else logger.info(`Сделка ${deal.id} отправили лайк пользователю ${deal.buyer.nickname}`);
-  const index = dealProcessList.indexOf(deal.id);
-  if (index !== -1) dealProcessList.splice(index, 1);
 }
 
 async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
-  dealProcessList.push(deal.id);
   const isVerified = (await redis.getConfig('IS_VERIFIED')) as unknown as boolean;
   logger.info(`Проверка пользователя (${deal.buyer.nickname}) по верификации (${isVerified}, ${deal.id})`);
   if (deal.buyer.verified === isVerified || isVerified === false) {
@@ -230,7 +222,6 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 }
 
 async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal, port: number) {
-  if (!dealProcessList.includes(deal.id)) dealProcessList.push(deal.id);
   const methodStr = await get_method_str(port, redis);
   const methodId = await get_method_id(methodStr);
 
@@ -293,12 +284,9 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
     },
   });
   logger.info(`Ожидание подтверждения от покупателя пополнение на телефон`);
-  const index = dealProcessList.indexOf(deal.id);
-  if (index !== -1) dealProcessList.splice(index, 1);
 }
 
 async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
-  if (!dealProcessList.includes(deal.id)) dealProcessList.push(deal.id);
   // check pay
   const lotPay = (await redis.getConfig('MTS_PAY')) as string[];
   const lotIndex = lotPay.findIndex((el) => el === deal.lot.id);
@@ -324,8 +312,6 @@ async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const now = Date.now();
   await redis.setPhone({ ...phone, unlock_at: now });
   logger.info(`Сделка ${deal.id} успешно отправлена на проверку телефона`);
-  const index = dealProcessList.indexOf(deal.id);
-  if (index !== -1) dealProcessList.splice(index, 1);
 }
 
 async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
@@ -349,9 +335,6 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   logger.info(`Откуп (${phone.deal_id}, val=${val_perc}, ${market}, Откуп результат:${otk})`);
 
   logger.log(`Отправка на завершение сделки ${phone.deal_id}`);
-  const index = dealProcessList.indexOf(phone.deal_id);
-  if (index !== -1) dealProcessList.splice(index, 1);
-
   const evaluateFunc = `new Promise((resolve) => statesNextDeal('[authKey]', '${phone.deal_id}').then(() => resolve(true)).catch(() => resolve(false)))`;
   const result = await browser.evalute({ code: evaluateFunc });
   if (result) logger.info(`Успешно отправили на завершение сделку ${phone.deal_id}`);
