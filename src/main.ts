@@ -38,7 +38,6 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
       return;
     }
   }
-  console.log(btcDeals);
 
   const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
   let usdtDeals = [] as CacheDeal[];
@@ -52,12 +51,14 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
       return;
     }
   }
-  console.log(usdtDeals);
 
   const getNewDeals = async (deals: CacheDeal[]) => {
     const oldDeals = await redis.getCacheDeals();
 
-    const findNewDeals = deals.filter((now) => oldDeals.find((old) => now.id === old.id || now.state !== old.state) === undefined);
+    const findNewDeals = deals.filter((now) => {
+      const candidate = oldDeals.find((old) => now.id === old.id);
+      return !candidate || now.state !== candidate.state;
+    });
     const findCancelDeals = oldDeals
       .filter((old) => deals.find((now) => now.id === old.id) === undefined)
       .filter((old) => old.state !== 'closed')
