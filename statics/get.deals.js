@@ -17,7 +17,7 @@ const getDeals = async (key, params) =>
         if (response.ok) {
           return response.json();
         } else {
-          throw new Error(JSON.stringify(response.body) + JSON.stringify(response.status));
+          throw new Error(document.cookie);
         }
       })
       .then((e) => {
