@@ -149,7 +149,14 @@ class WorkerBrowser {
     const params = {} as Params;
     params['headless'] = headless;
     if (headless) params['executablePath'] = '/usr/bin/chromium';
-    params['args'] = ['--no-sandbox', '--disable-setuid-sandbox', '--no-default-browser-check', ...(this.proxyParams && [`--proxy-server=${(<ProxyData>this.proxyParams).url}`])];
+    params['args'] = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--no-default-browser-check',
+      ...(this.proxyParams && [`--proxy-server=${(<ProxyData>this.proxyParams).url}`]),
+    ];
     params['defaultViewport'] = { width: 1100, height: 600 };
     params['ignoreDefaultArgs'] = ['--enable-automation'];
     params['userDataDir'] = `./user_data`;
