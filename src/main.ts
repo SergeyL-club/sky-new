@@ -175,7 +175,7 @@ async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
   else logger.info(`Сделка ${deal.id} отправили лайк пользователю ${deal.buyer.nickname}`);
   logger.log(`Отправляем сделку ${deal.id} в уведомление тг`);
   const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-  return await sendTgNotify(`(sky) Сделка ${deal.id} была завершена, сумма ${deal.amount}, телефон: ${phone?.requisite.text}`, tgId, mainPort);
+  return await sendTgNotify(`(sky) Сделка ${deal.id} была завершена, сумма ${deal.amount_currency}, телефон: ${phone?.requisite.text}`, tgId, mainPort);
 }
 
 async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
@@ -330,8 +330,8 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   }
 
   // освобождаем телефон
-  logger.log(`Освобождаем телефон сделки ${phone.deal_id}`);
-  await redis.delPhoneDeal(phone.deal_id);
+  // logger.log(`Освобождаем телефон сделки ${phone.deal_id}`);
+  // await redis.delPhoneDeal(phone.deal_id);
 
   // откуп
   const val = phone.ammount;
