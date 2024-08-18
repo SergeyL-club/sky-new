@@ -168,8 +168,8 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   logger.info(`Проверка пользователя (${deal.buyer.nickname}) по верификации (${isVerified}, ${deal.id})`);
   if (deal.buyer.verified === isVerified || isVerified === false) {
     // check pay
-    const lotPay = (await redis.getsConfig(['MTS_PAY'])) as string[][];
-    const lotIndex = lotPay.findIndex((el) => el.find((str) => str === deal.lot.id));
+    const lotPay = (await redis.getConfig('MTS_PAY')) as string[];
+    const lotIndex = lotPay.findIndex((el) => el === deal.lot.id);
     if (lotIndex === -1) {
       await ignoreDeal(redis, deal);
       logger.warn(`Сделка ${deal.id} не найден нужный порт для обработки (${deal.lot.id}, ${JSON.stringify(lotPay)})`);
