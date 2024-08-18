@@ -3,7 +3,7 @@ export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
 // конфиг mts
 export const MTS_PORT: number = 29980;
-export const MTS_PAY: string = 'Bz8uYqXyPk';
+export const MTS_PAY: string[] = ['Bz8uYqXyPk'];
 
 // адрес на службы (mts, qiwi, yandex, payeer)
 export const PAID_URL: string = 'http://145.239.95.220';
@@ -45,7 +45,7 @@ export const SELECTOR_URL_AUTH: [string, string] = ['::-p-xpath(//a[text()="Во
 export const SELECTOR_BTN_AUTH: [string, string] = ['::-p-xpath(//button[text()="Войти"])', '::-p-xpath(//button[text()="Enter"])']; // селекторы на кнопку входа уже в форме
 
 // конфиг обновлений циклов
-export const POLLING_DEALS: boolean = true;
+export const POLLING_DEALS: boolean = false;
 export const POLLING_DEALS_BTC: boolean = true;
 export const POLLING_DEALS_USDT: boolean = true;
 export const DELAY_POLLING_DEALS: number = 10000;

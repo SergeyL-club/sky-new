@@ -12,7 +12,7 @@ import { loggerRedis } from '../utils/logger.js';
 type ServerCommands = 'server' | 'browser' | 'exit' | 'connect';
 export type KeyOfConfig = keyof typeof CONFIG;
 type TypeOfConfig = typeof CONFIG;
-type ValueType = string | number | boolean | PuppeteerLifeCycleEvent[] | [string, string] | undefined;
+type ValueType = string | number | boolean | PuppeteerLifeCycleEvent[] | [string, string] | string[] | undefined;
 
 // cache deal
 export type CacheDeal = {

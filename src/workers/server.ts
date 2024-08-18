@@ -210,7 +210,7 @@ worker.on('menu', async (request, reply) => {
     if (typeof value === 'string') valueHtml = `<input id="${key}" type="text" data-pre='${value}' value='${value}'/><button onclick="setConfig('${key}', '${value}')">Отправить</button>`;
     if (typeof value === 'number') valueHtml = `<input id="${key}" type="number" data-pre="${value}" value="${value}"/><button onclick="setConfig('${key}', ${value})">Отправить</button>`;
     if (Array.isArray(value) && typeof value[0] === 'string')
-      valueHtml = `<span>RU-<input type="text" id="${key}_RU" data-pre='${value[0]}' value='${value[0]}'/></span><span>EN-<input id="${key}_EN" type="text" data-pre='${value[1]}' value='${value[1]}'/></span><button onclick="setConfig('${key}', [])">Отправить</button>`;
+      valueHtml = `<span>ArrayString-<input type="text" id="${key}_ARRAY" data-pre='${JSON.stringify(value)}' value='${JSON.stringify(value)}'/></span><button onclick="setConfig('${key}', [])">Отправить</button>`;
 
     html += `<span style='display:flex;gap:10px;margin-top:5px;flex-direction:row;'>Значение CONFIG[${key}]: ${valueHtml}</span>`;
   }
@@ -252,24 +252,16 @@ worker.on('menu', async (request, reply) => {
         } else inputNumber.value = "" + oldValue; 
       })
     } else if (Array.isArray(value)) {
-      const inputRu = document.getElementById(key + "_RU");
-      const inputEn = document.getElementById(key + "_EN");
-      const nowValueRu = inputRu.value;
-      const oldValueRu = inputRu.dataset.pre;
-      const nowValueEn = inputEn.value;
-      const oldValueEn = inputEn.dataset.pre;
-      fetchConfig(key, JSON.stringify([nowValueRu, nowValueEn])).then((response) => {
+      const inputArray = document.getElementById(key + "_ARRAY");
+      const nowValueArray = inputArray.value;
+      const oldValueArray = inputArray.dataset.pre;
+      fetchConfig(key, nowValueArray).then((response) => {
         if (response.ok) {
           response.json().then((json) => {
-            inputRu.dataset.pre = json["value"][0];
-            inputRu.value = json["value"][0];
-            inputEn.dataset.pre = json["value"][1];
-            inputEn.value = json["value"][1];
+            inputArray.dataset.pre = JSON.stringify(json["value"]);
+            inputArray.value = JSON.stringify(json["value"]);
           })
-        } else {
-          inputRu.value = oldValueRu;
-          inputEn.value = oldValueEn;
-        } 
+        } else inputArray.value = oldValueArray;
       })    
     }
   }`;
