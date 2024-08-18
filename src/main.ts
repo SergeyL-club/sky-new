@@ -105,7 +105,6 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve).catch(() => resolve({})))`;
     const data: DetailsDeal = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal;
     logger.info(`Получены актуальные данные сделки ${data.id} (${data.state})`);
-    console.log(data);
 
     if (data.state === 'proposed') {
       const answer = await sendGet('http://145.239.95.220:' + (data.symbol === 'btc' ? 8014 : 8024) + '/?deal_process=' + data.id);
@@ -167,14 +166,16 @@ async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
 async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
   logger.info(`Сделка ${deal.id} завершена, очищаем телефон и ставим лайк`);
   logger.log(`Сделка ${deal.id} очищаем телефон`);
+  const phone = await redis.getPhoneDeal(deal.id);
   await redis.delPhoneDeal(deal.id);
   logger.log(`Сделка (${deal.id}) отправляем лайк пользователю`);
   const evaluateFunc = `new Promise((resolve) => likeDeal('[authKey]', '${deal.id}', '${deal.buyer.nickname}').then(() => resolve(true)).catch(() => resolve(false)))`;
   const response = await browser.evalute({ code: evaluateFunc });
   if (!response) logger.warn(`Сделка ${deal.id} не удалось поставить лайк`);
   else logger.info(`Сделка ${deal.id} отправили лайк пользователю ${deal.buyer.nickname}`);
+  logger.log(`Отправляем сделку ${deal.id} в уведомление тг`);
   const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-  return await sendTgNotify(`(sky) Сделка ${deal.id} завершена (${deal.amount_currency}, ${deal.lot.id})`, tgId, mainPort);
+  return await sendTgNotify(`(sky) Сделка ${deal.id} была завершена, сумма ${deal.amount}, телефон: ${phone?.requisite.text}`, tgId, mainPort);
 }
 
 async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
