@@ -70,7 +70,7 @@ export type DetailsDeal = {
   confirmed_at: string;
   created_at: string;
   deal_id: number;
-  dispute: {} | null;
+  dispute: object | null;
   end_time: null;
   id: string;
   rate: number;

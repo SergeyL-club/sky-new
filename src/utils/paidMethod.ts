@@ -39,7 +39,7 @@ export async function get_method_id(str: Awaited<ReturnType<typeof get_method_st
   return -1;
 }
 
-export async function sendRequest(url: string, subUrl: string, maxRepeat = 3, cnt = 1): Promise<any> {
+export async function sendRequest<Type>(url: string, subUrl: string, maxRepeat = 3, cnt = 1): Promise<Type | false> {
   const localUrl = url + subUrl;
   const result = await sendGet(localUrl);
   if (result === false) {
@@ -55,19 +55,19 @@ export async function sendRequest(url: string, subUrl: string, maxRepeat = 3, cn
   return JSON.parse(result + '');
 }
 
-export async function getNumber(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, isQiwi = false, is_pre = false) {
+export async function getNumber<Type>(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, is_pre = false) {
   let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
   if (is_pre) subUrl += '&test=1';
-  return await sendRequest(url, subUrl);
+  return await sendRequest<Type>(url, subUrl);
 }
 
-export async function unlockNumber(url: string, id: string) {
+export async function unlockNumber<Type>(url: string, id: string) {
   const subUrl = `start-checking-balance?deal_id=${id}`;
-  return await sendRequest(url, subUrl);
+  return await sendRequest<Type>(url, subUrl);
 }
 
 export async function sendGet(url: string): Promise<string | false> {
-  return new Promise(async (resolve) => {
+  return new Promise((resolve) => {
     http
       .get(url, (resp) => {
         let data = '';
@@ -88,13 +88,9 @@ export async function sendGet(url: string): Promise<string | false> {
 }
 
 export async function sendTgNotify(str: string, chat_id: number, port: number) {
-  https
-    .get('https://api.telegram.org/bot1011294800:AAHJ51OwsdglVetposO1NuDit4QKK4p2yUw/sendMessage?chat_id=' + chat_id + '&text=' + encodeURI(str), (res) => {
-      res.on('data', (d) => {});
-    })
-    .on('error', (e) => {
-      console.error(e);
-    });
+  https.get('https://api.telegram.org/bot1011294800:AAHJ51OwsdglVetposO1NuDit4QKK4p2yUw/sendMessage?chat_id=' + chat_id + '&text=' + encodeURI(str)).on('error', (e) => {
+    console.error(e);
+  });
   if (str.includes('Паника')) {
     console.log('Отправляем панику для перезапуска');
     http.get('http://127.0.0.1:5050/?port=' + port);

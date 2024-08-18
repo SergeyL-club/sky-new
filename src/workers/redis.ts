@@ -20,9 +20,6 @@ export type CacheDeal = {
   state: string;
 };
 
-// details deal
-export type DetailsDeal = {};
-
 // phone
 export type PhoneServiceData = {
   requisite: {

@@ -77,8 +77,8 @@ class WorkerServer {
     Object.keys(data)
       .sort()
       .forEach(function (k) {
-        const v = (data as any)[k];
-        tmp.push(v);
+        const v = data[k as keyof typeof data];
+        tmp.push(String(v));
       });
     const hash = tmp.join(':');
     const paidSecret = (await redis?.getConfig('PAID_SECRET')) ?? CONFIG['PAID_SECRET'];
