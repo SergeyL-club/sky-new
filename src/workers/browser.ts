@@ -464,7 +464,7 @@ class WorkerBrowser {
     if (localCode.includes('[authKey]')) localCode = localCode.split('[authKey]').join(`${this.authKey}`);
 
     // делаем запрос и отдаем ответ
-    loggerBrowser.log('Производим запрос');
+    loggerBrowser.log(`Производим запрос (${localCode})`);
     const result = await localPage.evaluate(localCode);
     loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
     return result as Type;
