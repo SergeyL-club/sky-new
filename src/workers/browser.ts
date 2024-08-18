@@ -207,8 +207,7 @@ class WorkerBrowser {
       const puppeteerExtra = new PuppeteerExtra(puppeteer as unknown as VanillaPuppeteer);
       puppeteerExtra.use(stealsPlugin());
 
-      // this.browser = await puppeteerExtra.launch({ ...params, ...(headless && { executablePath: '/usr/bin/chromium-browser' }) });
-      this.browser = await puppeteerExtra.launch(params);
+      this.browser = await puppeteerExtra.launch({ ...params, ...(headless && { executablePath: '/usr/bin/chromium' }) });
 
       // set page deals
       const url = 'https://skycrypto.me/deals';
