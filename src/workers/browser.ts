@@ -357,8 +357,8 @@ class WorkerBrowser {
 
     await delay(delayAuth);
     const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
-    const [selectorAuthFormRu, selectorAuthFormEn] = (await redis?.getConfig('SELECTOR_AUTH_FORM')) as [string, string];
-    const btnAuth = (await page.$x(selectorAuthFormRu))[0] || (await page.$x(selectorAuthFormEn))[0] || null;
+    const selectorAuthForm = (await redis?.getConfig('SELECTOR_AUTH_FORM')) as string;
+    const btnAuth = (await page.$(selectorAuthForm)) || null;
     if (!btnAuth) {
       loggerBrowser.warn('Неудалось найти кнопку входа (главная страница)');
       return false;
@@ -370,13 +370,13 @@ class WorkerBrowser {
     let inputEmail = (await page.$(selectorInputEmail)) || null;
     let inputPassword = (await page.$(selectorInputPassword)) || null;
     if (!inputEmail || !inputPassword) {
-      const [selectorUrlAuthRu, selectorUrlAuthEn] = (await redis?.getConfig('SELECTOR_URL_AUTH')) as [string, string];
-      const uriAuth = (await page.$x(selectorUrlAuthRu))[0] || (await page.$x(selectorUrlAuthEn))[0] || null;
+      const selectorUrlAuth = (await redis?.getConfig('SELECTOR_URL_AUTH')) as string;
+      const uriAuth = (await page.$(selectorUrlAuth)) || null;
       if (!uriAuth) {
         loggerBrowser.warn('Не было найдена "a" для открытия input password');
         return false;
       }
-      await (uriAuth as ElementHandle<Element>).click({ delay: random(delayEventMin, delayEventMax) });
+      await uriAuth.click({ delay: random(delayEventMin, delayEventMax) });
     }
 
     await delay(delayAuth);
@@ -394,8 +394,8 @@ class WorkerBrowser {
     await this.inputSet({ input: inputPassword as ElementHandle<Element>, text: password, page });
 
     page.screenshot({ path: resolve(dirname(fileURLToPath(import.meta.url)), `../../logs`) + `screenshot_1.png` });
-    const [selectorBtnAuthRu, selectorBtnAuthEn] = (await redis?.getConfig('SELECTOR_BTN_AUTH')) as [string, string];
-    const btnAuthForm = (await page.$x(selectorBtnAuthRu))[0] || (await page.$x(selectorBtnAuthEn))[0] || null;
+    const selectorBtnAuth = (await redis?.getConfig('SELECTOR_BTN_AUTH')) as string;
+    const btnAuthForm = (await page.$(selectorBtnAuth)) || null;
     if (!btnAuthForm) {
       loggerBrowser.warn('Неудалось найти кнопку входа (форма)');
       return false;

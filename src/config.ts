@@ -40,9 +40,9 @@ export const DELAY_AUTH: number = 5000; // ожидание автоматиче
 export const SELECTOR_INPUT_EMAIL: string = 'input[name="email"]';
 export const SELECTOR_INPUT_PASSWORD: string = 'input[name="password"]';
 export const SELECTOR_ERROR: [string, string] = ['//span[text()="Ошибка 404"]', '//span[text()="Error 404"]']; // селектор на ошибку 404
-export const SELECTOR_AUTH_FORM: [string, string] = ['//button[text()="Вход"]', '//button[text()="Enter"]']; // селектор на вход в форму авторизации
-export const SELECTOR_URL_AUTH: [string, string] = ['//a[text()="Войти"]', '//a[text()="Enter"]']; // селекторы на ссылку для открытия пароля в форме
-export const SELECTOR_BTN_AUTH: [string, string] = ['//button[text()="Войти"]', '//button[text()="Enter"]']; // селекторы на кнопку входа уже в форме
+export const SELECTOR_AUTH_FORM: string = '.top-nav > div > div > div:nth-child(5)'; // селектор на вход в форму авторизации
+export const SELECTOR_URL_AUTH: string = '.form-wrap > div:nth-child(6) > a'; // селекторы на ссылку для открытия пароля в форме
+export const SELECTOR_BTN_AUTH: string = '.form-wrap > div > button'; // селекторы на кнопку входа уже в форме
 
 // конфиг обновлений циклов
 export const POLLING_DEALS: boolean = false;
