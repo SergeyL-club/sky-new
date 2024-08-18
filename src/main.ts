@@ -52,6 +52,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
       return;
     }
   }
+  console.log(usdtDeals);
 
   const getNewDeals = async (deals: CacheDeal[]) => {
     const oldDeals = await redis.getCacheDeals();
