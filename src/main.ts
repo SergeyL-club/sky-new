@@ -316,7 +316,7 @@ async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 }
 
 async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
-  const isLimit = phone.ammount <= phone.requisite.max_payment_sum && phone.ammount >= phone.requisite.max_payment_sum;
+  const isLimit = phone.ammount <= phone.requisite.max_payment_sum && phone.ammount >= phone.requisite.min_payment_sum;
   if (!isLimit) {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
     await ignoreDeal(redis, { id: phone.deal_id } as DetailsDeal);
