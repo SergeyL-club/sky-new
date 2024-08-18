@@ -16,7 +16,7 @@ export function readLogs(fname: string, limit: number) {
     if (logs.length >= limit) break;
   }
   logs.reverse().shift();
-  return logs;
+  return logs.reverse();
 }
 
 export function getLogs(data: string[]) {
