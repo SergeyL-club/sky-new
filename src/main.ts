@@ -20,7 +20,7 @@ const dealProcessList = [] as string[];
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
   const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
-  const code = (data: ReturnType<typeof params>) => `new Promise((resolve, reject) => getDeals('[authKey]', ${JSON.stringify(data)}).then(resolve).catch(reject))`;
+  const code = (data: ReturnType<typeof params>) => `new Promise((resolve) => getDeals('[authKey]', ${JSON.stringify(data)}).then(resolve).catch(()=> resolve([])))`;
 
   const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
   const usdtLimit = await redis.getConfig('POLLING_DEALS_LIMIT_USDT');
@@ -33,6 +33,11 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     logger.info(`Получение списка с данными ${JSON.stringify(btcParams)}`);
     btcDeals = ((await browser.evalute({ code: code(btcParams) })) as CacheDeal[]).map((el) => ({ id: el.id, state: el.state }));
     logger.log(`Получено ${btcDeals.length}`);
+    const limit = (await redis.getConfig('POLLING_DEALS_LIMIT_BTC')) as number;
+    if (btcDeals.length !== limit) {
+      logger.warn(`Список btc не равен лимиту (${btcDeals.length}, ${limit})`);
+      return;
+    }
   }
 
   const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
@@ -41,6 +46,11 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     logger.info(`Получение списка с данными ${JSON.stringify(usdtParams)}`);
     usdtDeals = ((await browser.evalute({ code: code(usdtParams) })) as CacheDeal[]).map((el) => ({ id: el.id, state: el.state }));
     logger.log(`Получено ${usdtDeals.length}`);
+    const limit = (await redis.getConfig('POLLING_DEALS_LIMIT_USDT')) as number;
+    if (usdtDeals.length !== limit) {
+      logger.warn(`Список usdt не равен лимиту (${usdtDeals.length}, ${limit})`);
+      return;
+    }
   }
 
   const getNewDeals = async (deals: CacheDeal[]) => {
