@@ -20,7 +20,7 @@ export const EMAIL: string = 'support@bizoninvest.com';
 export const PASSWORD: string = 'fMwbh7XeXdTYNci';
 
 // конфиг сделки
-export const IS_VERIFIED: boolean = true;
+export const IS_VERIFIED: boolean = false;
 
 // автоматическая отмена или открытие спора по истечению времени телефона
 export const TIMER_PHONE: boolean = true;

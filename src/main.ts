@@ -38,6 +38,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
       return;
     }
   }
+  console.log(btcDeals);
 
   const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
   let usdtDeals = [] as CacheDeal[];
