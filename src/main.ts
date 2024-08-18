@@ -112,7 +112,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
     }
 
-    if (!data.dispute) return await disputDeal(redis, data);
+    if (!(typeof data.dispute === 'undefined') && data.dispute !== null) return await disputDeal(redis, data);
 
     switch (data.state) {
       case 'proposed':
@@ -425,7 +425,8 @@ const main = () =>
       const { phonesDispute } = await redis.timerPhone();
       for (let indexDispute = 0; indexDispute < phonesDispute.length; indexDispute++) {
         const phone = phonesDispute[indexDispute];
-        Promise.resolve(disputePhone(redis, browser, phone));
+        await redis.delPhoneDeal(phone.deal_id);
+        // Promise.resolve(disputePhone(redis, browser, phone));
       }
     };
 
