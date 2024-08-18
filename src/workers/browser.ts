@@ -144,10 +144,9 @@ class WorkerBrowser {
     }
   };
 
-  initParams = () => {
+  initParams = (headless: boolean = false) => {
     const params = {} as Params;
-    if (process.argv.includes('--headless')) params['headless'] = true;
-    else params['headless'] = !true;
+    params['headless'] = headless;
     params['args'] = ['--no-sandbox', '--no-default-browser-check', ...(this.proxyParams && [`--proxy-server=${(<ProxyData>this.proxyParams).url}`])];
     params['defaultViewport'] = { width: 1100, height: 600 };
     params['ignoreDefaultArgs'] = ['--enable-automation'];
@@ -198,10 +197,10 @@ class WorkerBrowser {
     return page;
   };
 
-  initBrowser = async () => {
+  initBrowser = async (headless?: boolean) => {
     try {
       loggerBrowser.info('Установка конфигурации браузера');
-      const params = this.initParams();
+      const params = this.initParams(headless);
 
       // close old browser
       if (this.browser) await this.browser.close();

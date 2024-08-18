@@ -442,9 +442,10 @@ const main = () =>
       });
     };
 
+    const headless = process.argv.includes('--headless');
     const initBrowser = () => {
       browser
-        .initBrowser()
+        .initBrowser(headless)
         .then(next)
         .catch(() => {
           logger.warn(`Не удалось запустить браузер, попытка запустить`);
