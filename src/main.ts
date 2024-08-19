@@ -19,7 +19,7 @@ const ignoreList = [] as string[];
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
   const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
-  const code = (data: ReturnType<typeof params>) => `new Promise((resolve) => getDeals('[authKey]', ${JSON.stringify(data)}).then(resolve))`;
+  const code = (data: ReturnType<typeof params>) => `getDeals('[authKey]', ${JSON.stringify(data)})`;
 
   const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
   const usdtLimit = await redis.getConfig('POLLING_DEALS_LIMIT_USDT');
@@ -106,7 +106,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     if (ignoreList.includes(cacheDeal.id)) return;
 
     logger.info(`Изменение сделки ${cacheDeal.id} (${cacheDeal.state})`);
-    const evaluateFunc = `new Promise((resolve) => getDeal('[authKey]', '${cacheDeal.id}').then(resolve))`;
+    const evaluateFunc = `getDeal('[authKey]', '${cacheDeal.id}')`;
     const data: DetailsDeal | null = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal | null;
     if (data === null) {
       logger.warn(`Сделка ${cacheDeal.id} (${cacheDeal.state}) не удалось получить доп информацию, отправляем в игнор и уведомляем`);
@@ -179,7 +179,7 @@ async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
   const phone = await redis.getPhoneDeal(deal.id);
   await redis.delPhoneDeal(deal.id);
   logger.log(`Сделка (${deal.id}) отправляем лайк пользователю`);
-  const evaluateFunc = `new Promise((resolve) => likeDeal('[authKey]', '${deal.id}', '${deal.buyer.nickname}').then(() => resolve(true)))`;
+  const evaluateFunc = `likeDeal('[authKey]', '${deal.id}', '${deal.buyer.nickname}')`;
   const response = await browser.evalute({ code: evaluateFunc });
   if (!response) logger.warn(`Сделка ${deal.id} не удалось поставить лайк`);
   else logger.info(`Сделка ${deal.id} отправили лайк пользователю ${deal.buyer.nickname}`);
@@ -224,7 +224,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     logger.log({ obj: prePhone }, `Предворительный телефон найден (${deal.id}) ->`);
 
     logger.log(`Пользователь (${deal.buyer.nickname}) прошёл верификацию, подтверждение сделки (${deal.id})`);
-    const evaluateFunc = `new Promise((resolve) => statesNextDeal('[authKey]', '${deal.id}').then(() => resolve(true)))`;
+    const evaluateFunc = `statesNextDeal('[authKey]', '${deal.id}')`;
     const result = await browser.evalute({ code: evaluateFunc });
     if (result) {
       logger.info(`Успешное подтверждение принятия сделки (${deal.id})`);
@@ -262,7 +262,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   // send chat
   logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
-  const evaluateFuncChat = `new Promise((resolve) => messageDeal('[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}').then(() => resolve(true)))`;
+  const evaluateFuncChat = `messageDeal('[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
   if (!resultChat) {
     await ignoreDeal(redis, deal);
@@ -275,7 +275,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   // send requisite
   logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
-  const evaluateFuncRequisite = `new Promise((resolve) => requisiteDeal('[authKey]', '${deal.id}', '${phone.requisite.requisite_text}').then(() => resolve(true)))`;
+  const evaluateFuncRequisite = `requisiteDeal('[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
   const resultRequisite = await browser.evalute({ code: evaluateFuncRequisite });
   if (!resultRequisite) {
     await ignoreDeal(redis, deal);
@@ -356,7 +356,7 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   logger.info(`Откуп (${phone.deal_id}, val=${val_perc}, ${market}, Откуп результат:${otk})`);
 
   logger.log(`Отправка на завершение сделки ${phone.deal_id}`);
-  const evaluateFunc = `new Promise((resolve) => statesNextDeal('[authKey]', '${phone.deal_id}').then(() => resolve(true)))`;
+  const evaluateFunc = `statesNextDeal('[authKey]', '${phone.deal_id}')`;
   const result = await browser.evalute({ code: evaluateFunc });
   if (result) logger.info(`Успешно отправили на завершение сделку ${phone.deal_id}`);
   else {

@@ -22,7 +22,7 @@ const cancelDeal = async (key, dealId) =>
     })
       .then((response) => {
         if (response.ok) {
-          return response.json();
+          return true;
         } else {
           throw new Error('Network response was not ok.');
         }

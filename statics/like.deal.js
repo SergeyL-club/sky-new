@@ -22,7 +22,7 @@ const likeDeal = async (key, dealId, userId) =>
     })
       .then((response) => {
         if (response.ok) {
-          return response.json();
+          return true;
         } else {
           throw new Error('Network response was not ok.');
         }
