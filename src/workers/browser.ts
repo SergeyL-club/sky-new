@@ -469,7 +469,10 @@ class WorkerBrowser {
     loggerBrowser.log(`Производим запрос (${localCode})`);
     const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     try {
+      console.log(localCode);
       const result = await localPage.evaluate(localCode);
+      console.log(result);
+
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
       return result as Type;
     } catch {
