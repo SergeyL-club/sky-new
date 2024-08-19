@@ -295,7 +295,8 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
     id: deal.deal_id,
     deal_id: deal.id,
     type: deal.symbol,
-    ammount: deal.amount_currency,
+    amount: deal.amount_currency,
+    amount_type: deal.amount,
     requisite: {
       chat_text: phone.requisite.chat_text,
       requisite_text: phone.requisite.requisite_text,
@@ -336,11 +337,11 @@ async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 }
 
 async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
-  const isLimit = phone.ammount <= phone.requisite.max_payment_sum && phone.ammount >= phone.requisite.min_payment_sum;
+  const isLimit = phone.amount <= phone.requisite.max_payment_sum && phone.amount >= phone.requisite.min_payment_sum;
   if (!isLimit) {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
     await ignoreDeal(redis, { id: phone.deal_id } as DetailsDeal);
-    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не подходит по лимитам (${phone.requisite.min_payment_sum}, ${phone.ammount}, ${phone.requisite.max_payment_sum})`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не подходит по лимитам (${phone.requisite.min_payment_sum}, ${phone.amount}, ${phone.requisite.max_payment_sum})`, tgId, mainPort);
   }
 
   // освобождаем телефон
@@ -348,7 +349,7 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   // await redis.delPhoneDeal(phone.deal_id);
 
   // откуп
-  const val = phone.ammount;
+  const val = phone.amount_type;
   const cur = phone.type;
   const market = cur === 'btc' ? 'btcrub' : 'usdtrub';
   const val_perc = val * 1.005;

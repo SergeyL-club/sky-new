@@ -47,7 +47,8 @@ export type PhoneServiceData = {
     max_payment_sum: number;
   };
   id: number;
-  ammount: number;
+  amount: number;
+  amount_type: number;
   type: 'btc' | 'usdt';
   deal_id: string;
   create_at: number;
