@@ -20,6 +20,23 @@ export type CacheDeal = {
   state: string;
 };
 
+// deal in get deals
+export type DealGet = {
+  amount: number;
+  amount_currency: number;
+  broker_id: string;
+  created_at: string;
+  currency: string;
+  dispute: boolean;
+  id: string;
+  is_lot_owner: boolean;
+  lot_id: string;
+  opponent: string;
+  state: string;
+  symbol: string;
+  type: string;
+};
+
 // phone
 export type PhoneServiceData = {
   requisite: {

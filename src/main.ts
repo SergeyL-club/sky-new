@@ -3,7 +3,7 @@ import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
-import type { CacheDeal, KeyOfConfig, PhoneServiceData } from './workers/redis.js';
+import type { CacheDeal, DealGet, KeyOfConfig, PhoneServiceData } from './workers/redis.js';
 import type { DetailsDeal } from './workers/browser.js';
 
 import path, { dirname } from 'path';
@@ -27,12 +27,12 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   const usdtParams = params('usdt', 'rub', 0, usdtLimit as number);
 
   const btcIs = await redis.getConfig('POLLING_DEALS_BTC');
-  let btcDeals = [] as CacheDeal[];
+  let btcDeals = [] as DealGet[];
   if (btcIs) {
     logger.info(`Получение списка с данными ${JSON.stringify(btcParams)}`);
-    const btcDealsPre = (await browser.evalute({ code: code(btcParams) })) as CacheDeal[] | null;
+    const btcDealsPre = (await browser.evalute({ code: code(btcParams) })) as DealGet[] | null;
     if (!Array.isArray(btcDealsPre)) return logger.warn(`Запрос на сделки btc не успешный, отмена итерации`);
-    btcDeals = btcDealsPre.map((el) => ({ id: el.id, state: el.state }));
+    btcDeals = btcDealsPre;
     logger.log(`Получено ${btcDeals.length}`);
     const limit = (await redis.getConfig('POLLING_DEALS_LIMIT_BTC')) as number;
     if (btcDeals.length !== limit) {
@@ -42,12 +42,12 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   }
 
   const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
-  let usdtDeals = [] as CacheDeal[];
+  let usdtDeals = [] as DealGet[];
   if (usdtIs) {
     logger.info(`Получение списка с данными ${JSON.stringify(usdtParams)}`);
-    const usdtDealsPre = (await browser.evalute({ code: code(usdtParams) })) as CacheDeal[] | null;
+    const usdtDealsPre = (await browser.evalute({ code: code(usdtParams) })) as DealGet[] | null;
     if (!Array.isArray(usdtDealsPre)) return logger.warn(`Запрос на сделки usdt не успешный, отмена итерации`);
-    usdtDeals = usdtDealsPre.map((el) => ({ id: el.id, state: el.state }));
+    usdtDeals = usdtDealsPre;
     logger.log(`Получено ${usdtDeals.length}`);
     const limit = (await redis.getConfig('POLLING_DEALS_LIMIT_USDT')) as number;
     if (usdtDeals.length !== limit) {
@@ -56,14 +56,19 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     }
   }
 
-  const getNewDeals = async (deals: CacheDeal[]) => {
+  const getNewDeals = async (deals: DealGet[]) => {
     const oldDeals = await redis.getCacheDeals();
 
     const findNewDeals = deals
-      .filter((now, index, array) => {
+      .filter((now) => {
         const candidate = oldDeals.find((old) => now.id === old.id);
-        const actualState = ['proposed', 'paid', 'closed'];
-        return (!candidate || now.state !== candidate.state) && actualState.includes(now.state) && !(now.state === 'closed' && index > array.length / 2);
+        const actualState = ['proposed', 'paid'];
+        if (ignoreList.includes(now.id) && (now.state === 'cancel' || now.state === 'closed')) {
+          const index = ignoreList.indexOf(now.id);
+          if (index !== -1) ignoreList.splice(index, 1);
+          return false;
+        }
+        return ((!candidate || now.state !== candidate.state) && actualState.includes(now.state)) || now.dispute;
       })
       .map((now) => ({ id: now.id, state: now.state }));
     const findCancelDeals = oldDeals
@@ -92,12 +97,6 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
 async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, cacheDeal: CacheDeal) {
   try {
-    if (ignoreList.includes(cacheDeal.id) && (cacheDeal.state === 'cancel' || cacheDeal.state === 'closed')) {
-      const index = ignoreList.indexOf(cacheDeal.id);
-      if (index !== -1) ignoreList.splice(index, 1);
-      return;
-    }
-
     if (cacheDeal.state === 'cancel') {
       logger.info(`Сделка ${cacheDeal.id} ушла из списка (cancel), очищаем её`);
       return await redis.delPhoneDeal(cacheDeal.id);
@@ -129,8 +128,6 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
         return await proposedDeal(redis, browser, data);
       case 'paid':
         return await paidDeal(redis, browser, data);
-      case 'closed':
-        return await closedDeal(redis, browser, data);
     }
   } catch (error: unknown) {
     logger.error(error);
@@ -358,12 +355,22 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   logger.log(`Отправка на завершение сделки ${phone.deal_id}`);
   const evaluateFunc = `statesNextDeal('[authKey]', '${phone.deal_id}')`;
   const result = await browser.evalute({ code: evaluateFunc });
-  if (result) logger.info(`Успешно отправили на завершение сделку ${phone.deal_id}`);
-  else {
+  if (result) {
+    logger.info(`Успешно отправили на завершение сделку ${phone.deal_id}`);
+    const evaluateFunc = `getDeal('[authKey]', '${phone.deal_id}')`;
+    const data: DetailsDeal | null = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal | null;
+    if (!data) {
+      const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
+      logger.warn(`Сделка ${phone.deal_id} не удалось отправить на завершение`);
+      await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
+      return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
+    }
+    return await closedDeal(redis, browser, data);
+  } else {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
     logger.warn(`Сделка ${phone.deal_id} не удалось отправить на завершение`);
     await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
-    await sendTgNotify(`(sky) Сделка ${phone.deal_id} не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
   }
 }
 
