@@ -450,7 +450,7 @@ class WorkerBrowser {
       });
     });
 
-  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0) => {
+  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
     // проверяем page
     if (page) this.injectStatic(page);
@@ -467,10 +467,20 @@ class WorkerBrowser {
 
     // делаем запрос и отдаем ответ
     loggerBrowser.log(`Производим запрос (${localCode})`);
-    const result = await localPage.evaluate(localCode);
-    // if (!result)
-    loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
-    return result as Type;
+    const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
+    try {
+      const result = await localPage.evaluate(localCode);
+      loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
+      return result as Type;
+    } catch {
+      if (cnt < maxCnt) {
+        loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
+        await delay(delayCnt);
+        return await this.evalute<Type>({ page, code }, cnt + 1);
+      }
+
+      return null;
+    }
   };
 }
 

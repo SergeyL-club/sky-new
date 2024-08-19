@@ -35,6 +35,8 @@ export const URL_DEALS: string = 'https://skycrypto.me/deals'; // ссылка �
 export const DELAY_EVENT_MIN: number = 50; // минимальная задержка действия (пример: клик, ожидание после действия)
 export const DELAY_EVENT_MAX: number = 100; // максимальная задержка действия (пример: клик, ожидание после действия)
 export const DELAY_AUTH: number = 5000; // ожидание автоматического перехода сайтом, переключение формы с поролем
+export const CNT_EVALUTE: number = 3;
+export const DELAY_CNT: number = 5000;
 
 // селекторы для авторизации (если список - 0:ru 1:en)
 export const SELECTOR_INPUT_EMAIL: string = 'input[name="email"]';
