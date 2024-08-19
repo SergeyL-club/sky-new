@@ -60,10 +60,10 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     const oldDeals = await redis.getCacheDeals();
 
     const findNewDeals = deals
-      .filter((now) => {
+      .filter((now, index, array) => {
         const candidate = oldDeals.find((old) => now.id === old.id);
         const actualState = ['proposed', 'paid', 'closed'];
-        return (!candidate || now.state !== candidate.state) && actualState.includes(now.state);
+        return (!candidate || now.state !== candidate.state) && actualState.includes(now.state) && !(now.state === 'closed' && index > array.length / 2);
       })
       .map((now) => ({ id: now.id, state: now.state }));
     const findCancelDeals = oldDeals
