@@ -320,7 +320,7 @@ async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
   // get port
   const ports = (await redis.getsConfig(['MTS_PORT'])) as number[];
-  const port = ports[lotIndex];
+  const port = ports[0];
 
   // check pre phone
   const methodStr = await get_method_str(port, redis);
