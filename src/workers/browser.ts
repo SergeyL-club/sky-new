@@ -481,6 +481,7 @@ class WorkerBrowser {
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
       return result as Type;
     } catch (error: unknown) {
+      loggerBrowser.error(error);
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         await delay(delayCnt);
