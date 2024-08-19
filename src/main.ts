@@ -136,19 +136,19 @@ async function ignoreDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   // await sendTgNotify(`(sky) Сделка ${deal.id} ушла в ошибку, обработайте сами (${phone?.id}, ${phone?.requisite.text})`, tgId, mainPort);
 }
 
-async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
-  logger.log(`Сделка ${phone.deal_id} найден телефон в базе, особождаем`);
-  await redis.delPhoneDeal(phone.deal_id);
+// async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
+//   logger.log(`Сделка ${phone.deal_id} найден телефон в базе, особождаем`);
+//   await redis.delPhoneDeal(phone.deal_id);
 
-  const evaluateFunc = `new Promise((resolve) => disputeDeal('[authKey]', '${phone.deal_id}').then(() => resolve(true)).catch(() => resolve(false)))`;
-  const result = await browser.evalute({ code: evaluateFunc });
-  if (result) logger.info(`Успешно отправили в спор сделку ${phone.deal_id}`);
-  else {
-    logger.warn(`Не удалось отправить сделку (${phone.deal_id}) в спор`);
-    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-    await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
-  }
-}
+//   const evaluateFunc = `new Promise((resolve) => disputeDeal('[authKey]', '${phone.deal_id}').then(() => resolve(true)).catch(() => resolve(false)))`;
+//   const result = await browser.evalute({ code: evaluateFunc });
+//   if (result) logger.info(`Успешно отправили в спор сделку ${phone.deal_id}`);
+//   else {
+//     logger.warn(`Не удалось отправить сделку (${phone.deal_id}) в спор`);
+//     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+//     await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
+//   }
+// }
 
 async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   logger.info(`Сделка ${deal.id} находится в споре, освобождение и отправка уведомления`);
@@ -423,7 +423,7 @@ const main = () =>
     });
 
     // timer phone
-    const timerPhone = async (redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) => {
+    const timerPhone = async (redis: Remote<WorkerRedis>) => {
       const { phonesDispute } = await redis.timerPhone();
       for (let indexDispute = 0; indexDispute < phonesDispute.length; indexDispute++) {
         const phone = phonesDispute[indexDispute];
@@ -438,7 +438,7 @@ const main = () =>
       browser.updateKeys().then(() => {
         loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
         pollingDeals(redis, getDeals.bind(null, redis, browser));
-        pollingPhone(redis, timerPhone.bind(null, redis, browser));
+        pollingPhone(redis, timerPhone.bind(null, redis));
         workerServer.on('message', (data) => {
           if ('command' in data && data.command === 'balance') balance.call(null, redis, browser, data.phone);
         });

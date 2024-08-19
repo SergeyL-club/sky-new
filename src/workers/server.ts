@@ -171,8 +171,8 @@ worker.on('logs', async (request, reply) => {
   const fs = resolve(dirname(fileURLToPath(import.meta.url)), `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
   reply.type('text/html');
 
-  const limit = query.limit ? Number(query.limit) : 10000000000000000;
-  const data = getLogs(readLogs(fs, limit));
+  const limit = query.limit ? Number(query.limit) : undefined;
+  const data = getLogs(await readLogs(fs, limit));
   return reply.status(200).send(data);
 });
 

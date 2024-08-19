@@ -393,7 +393,6 @@ class WorkerBrowser {
     await delay(random(delayEventMin, delayEventMax));
     await this.inputSet({ input: inputPassword as ElementHandle<Element>, text: password, page });
 
-    page.screenshot({ path: resolve(dirname(fileURLToPath(import.meta.url)), `../../logs`) + `screenshot_1.png` });
     const selectorBtnAuth = (await redis?.getConfig('SELECTOR_BTN_AUTH')) as string;
     const btnAuthForm = (await page.$(selectorBtnAuth)) || null;
     if (!btnAuthForm) {
