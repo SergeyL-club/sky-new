@@ -158,6 +158,23 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
     await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
   }
+
+  const evaluateFuncChat = `messageDeal('[authKey]', 'Денег не поступало', '${phone.buyer}', '${phone.type}')`;
+  const resultChat = await browser.evalute({ code: evaluateFuncChat });
+  if (!resultChat) {
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+    await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
+    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${phone.deal_id} ('Денег не поступало', ${phone.amount}), нужно обработать самому`, tgId, mainPort);
+  }
+
+  // отключение сделок
+  const evaluateFuncTradingStatus = `tradingStatus('[authKey]', false)`;
+  const resultTradingStatus = await browser.evalute({ code: evaluateFuncTradingStatus });
+  if (!resultTradingStatus) {
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+    await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
+    return await sendTgNotify(`(sky) Неудалось отключить сделки из-за спора, проверьте сами`, tgId, mainPort);
+  }
 }
 
 async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
@@ -296,6 +313,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
     deal_id: deal.id,
     type: deal.symbol,
     amount: deal.amount_currency,
+    buyer: deal.buyer.nickname,
     amount_type: deal.amount,
     requisite: {
       chat_text: phone.requisite.chat_text,

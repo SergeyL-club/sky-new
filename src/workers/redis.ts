@@ -51,6 +51,7 @@ export type PhoneServiceData = {
   amount_type: number;
   type: 'btc' | 'usdt';
   deal_id: string;
+  buyer: string;
   create_at: number;
   unlock_at: number;
 };
