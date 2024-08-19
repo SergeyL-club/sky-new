@@ -63,9 +63,9 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
       .filter((now) => {
         const candidate = oldDeals.find((old) => now.id === old.id);
         const actualState = ['proposed', 'paid'];
-        if (ignoreList.includes(now.id) && (now.state === 'cancel' || now.state === 'closed')) {
-          const index = ignoreList.indexOf(now.id);
-          if (index !== -1) ignoreList.splice(index, 1);
+        const index = ignoreList.indexOf(now.id);
+        if (index !== -1) {
+          if (now.state === 'closed') ignoreList.splice(index, 1);
           return false;
         }
         return ((!candidate || now.state !== candidate.state) && actualState.includes(now.state)) || now.dispute;
@@ -149,8 +149,11 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 
   const evaluateFunc = `disputeDeal('[authKey]', '${phone.deal_id}')`;
   const result = await browser.evalute({ code: evaluateFunc });
-  if (result) logger.info(`Успешно отправили в спор сделку ${phone.deal_id}, телефон: ${phone.requisite.text}`);
-  else {
+  if (result) {
+    logger.info(`Успешно отправили в спор сделку ${phone.deal_id}, телефон: ${phone.requisite.text}`);
+    const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
+    await sendTgNotify(`(sky) Сделка ${phone.deal_id} отправлена в спор, нужно проверить сделку`, tgId, mainPort);
+  } else {
     logger.warn(`Не удалось отправить сделку (${phone.deal_id}) в спор`);
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
     await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
@@ -166,6 +169,10 @@ async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
     await redis.delPhoneDeal(deal.id);
   } else logger.log(`Сделка ${deal.id} не найден телефон`);
 
+  logger.log(`Ставим игнор на сделку ${deal.id}`);
+  await ignoreDeal(redis, deal);
+
+  logger.log(`Отправляем уведомление о споре сделки ${deal.id}`);
   const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
   await sendTgNotify(`(sky) Сделка ${deal.id} была открыта в споре`, tgId, mainPort);
 }
@@ -263,11 +270,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
   if (!resultChat) {
     await ignoreDeal(redis, deal);
-    return await sendTgNotify(
-      `(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
-      tgId,
-      mainPort,
-    );
+    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
   }
 
   // send requisite
