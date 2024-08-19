@@ -477,19 +477,15 @@ class WorkerBrowser {
     try {
       console.log(localCode);
       const result = await localPage.evaluate(localCode);
-      console.log(result);
 
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
       return result as Type;
     } catch (error: unknown) {
-      console.log(error);
-      console.log(cnt, maxCnt);
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
       }
-      console.log('null!!!!!');
       return null;
     }
   };
