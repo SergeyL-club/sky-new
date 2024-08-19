@@ -95,8 +95,6 @@ class WorkerServer {
     const phone = await redis?.getPhoneId(data.id);
     if (!phone) {
       loggerServer.warn(`Не найден телефон по запросу (${data.id})`);
-      const [tgId, mainPort] = (await redis?.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-      await sendTgNotify(`(sky) Не удалось найти телефон по номеру сделки ${data.id}, нужно проверить`, tgId, mainPort);
       return await reply.send('not');
     }
     parentPort?.postMessage({ command: 'balance', phone });
