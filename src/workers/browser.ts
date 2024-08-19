@@ -184,12 +184,18 @@ class WorkerBrowser {
   };
 
   injectStatic = async (page: Page) => {
+    const isInject = await page.evaluate(() => (window as unknown as { inject: boolean | undefined })['inject']);
     const files: string[] = readdirSync(resolve(dirname(fileURLToPath(import.meta.url)), `../../statics`));
 
-    for (let index = 0; index < files.length; index++) {
-      const fileName = files[index];
-      await page.addScriptTag({ path: resolve(dirname(fileURLToPath(import.meta.url)), `../../statics/${fileName}`) });
+    if (!isInject) {
+      for (let index = 0; index < files.length; index++) {
+        const fileName = files[index];
+        await page.addScriptTag({ path: resolve(dirname(fileURLToPath(import.meta.url)), `../../statics/${fileName}`) });
+      }
     }
+    await page.evaluate(() => {
+      (window as unknown as { inject: boolean })['inject'] = true;
+    });
   };
 
   initPage = async (url: string) => {
@@ -475,13 +481,15 @@ class WorkerBrowser {
 
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
       return result as Type;
-    } catch {
+    } catch (error: unknown) {
+      console.log(error);
+      console.log(cnt, maxCnt);
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
       }
-
+      console.log('null!!!!!');
       return null;
     }
   };
