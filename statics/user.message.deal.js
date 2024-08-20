@@ -20,11 +20,11 @@ const messageDeal = async (key, message, receiver, symbol) =>
       headers: headers,
       body: JSON.stringify(data),
     })
-      .then((response) => {
-        if (response.ok) {
+      .then(async (response) => {
+        if (response.status === 200) {
           return true;
         } else {
-          throw new Error('Network response was not ok.');
+          throw new Error(`Status: ${response.status}, ${await response.text()}`);
         }
       })
       .then((e) => {

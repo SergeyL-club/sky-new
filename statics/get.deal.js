@@ -13,11 +13,11 @@ const getDeal = async (key, dealId) =>
       method: 'GET',
       headers: headers,
     })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
+      .then(async (response) => {
+        if (response.status === 200) {
+          return await response.json();
         } else {
-          throw new Error('Network response was not ok.');
+          throw new Error(`Status: ${response.status}, ${await response.text()}`);
         }
       })
       .then((e) => {
