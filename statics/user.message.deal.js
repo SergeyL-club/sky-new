@@ -24,7 +24,9 @@ const messageDeal = async (key, message, receiver) =>
         if (response.status === 200) {
           return true;
         } else {
-          throw new Error(`Status: ${response.status}, ${await response.text()}`);
+          const json = await response.json();
+          if (json['detail'] == 'Attempted spam messages') return true;
+          throw new Error(`Status: ${response.status}, ${text}`);
         }
       })
       .then((e) => {
