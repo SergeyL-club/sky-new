@@ -281,15 +281,6 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   }
   logger.info({ obj: phone }, `Телефон найден (${deal.id}) ->`);
 
-  // send chat
-  logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
-  const evaluateFuncChat = `messageDeal('[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
-  const resultChat = await browser.evalute({ code: evaluateFuncChat });
-  if (!resultChat) {
-    await ignoreDeal(redis, deal);
-    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
-  }
-
   // send requisite
   logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
   const evaluateFuncRequisite = `requisiteDeal('[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
@@ -301,6 +292,15 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
       tgId,
       mainPort,
     );
+  }
+
+  // send chat
+  logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
+  const evaluateFuncChat = `messageDeal('[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
+  const resultChat = await browser.evalute({ code: evaluateFuncChat });
+  if (!resultChat) {
+    await ignoreDeal(redis, deal);
+    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
   }
 
   // save redis phone
