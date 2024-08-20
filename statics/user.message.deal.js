@@ -1,14 +1,14 @@
-const messageDeal = async (key, message, receiver, symbol) =>
+const messageDeal = async (key, message, receiver) =>
   new Promise((resolve, reject) => {
-    const data = { message, receiver, symbol };
+    const data = { receiver, message };
     const headers = {
       Authorization: `Bearer ${getCookie('sky_token')}`,
       AuthKey: key,
       'Access-Control-Allow-Origin': '*',
       'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
-      Accept: 'applicaton/json, text/plain, */*',
+      Accept: 'application/json, text/plain, */*',
       'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Accept-Language': 'en-US',
+      'Accept-Language': 'en-US,en;q=0.9',
       'Content-Length': `${JSON.stringify(data).length}`,
       'Content-Type': 'application/json;charset=UTF-8',
     };
