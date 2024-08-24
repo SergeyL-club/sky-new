@@ -32,6 +32,7 @@ export type Levels = keyof typeof customLevels;
 
 export const renderTextLine = <T extends string>(msg: T, level: Levels, html = false) => {
   const data = typeof msg === 'string' ? JSON.parse(msg) : msg;
+  if (data.msg) data.msg = data.msg.split('�').join('');
   const colorStart = html ? ColorsStartHtml[level] : ColorsStart[level];
   const colorEnd = html ? '</span>' : ColorsStart['log'];
   let text = html ? '<pre style="margin: 0; padding: 0">' + ColorsStartHtml['log'] : '';

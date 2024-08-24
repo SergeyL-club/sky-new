@@ -127,7 +127,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       case 'proposed':
         return await proposedDeal(redis, browser, data);
       case 'paid':
-        return await paidDeal(redis, browser, data);
+        return await paidDeal(redis, data);
     }
   } catch (error: unknown) {
     logger.error(error);
@@ -326,7 +326,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   logger.info(`Ожидание подтверждения от покупателя пополнение на телефон`);
 }
 
-async function paidDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
+async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   // check pay
   const lotPay = (await redis.getConfig('MTS_PAY')) as string[];
   const lotIndex = lotPay.findIndex((el) => el === deal.lot.id);

@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Remote } from 'comlink';
 import type WorkerRedis from './redis.js';
-import { sendTgNotify, type ApiRequest } from '../utils/paidMethod.js';
+import type { ApiRequest } from '../utils/paidMethod.js';
+import type { KeyOfConfig, TypeOfConfig } from './redis.js';
 // import type WorkerBrowser from './browser.js';
 
 import { parentPort } from 'node:worker_threads';
@@ -20,9 +21,6 @@ import fastifyCors from '@fastify/cors';
 type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
 type Events = 'config-set' | 'config-get' | 'logs' | 'menu';
 
-type KeyOfConfig = keyof typeof CONFIG;
-type TypeOfConfig = typeof CONFIG;
-
 type Callback = (request: FastifyRequest, reply: FastifyReply) => void | Promise<void>;
 type Listen = {
   [key: string]: Callback;
@@ -30,13 +28,13 @@ type Listen = {
 
 type RequestQueryGetConfig = {
   command: 'config-get';
-  name: keyof typeof CONFIG;
+  name: KeyOfConfig;
   menu?: boolean;
 };
 
 type RequestQuerySetConfig = {
   command: 'config-set';
-  name: keyof typeof CONFIG;
+  name: KeyOfConfig;
   value: unknown;
   menu?: boolean;
 };
@@ -165,6 +163,7 @@ worker.on('config-set', async (request, reply) => {
 
 worker.on('logs', async (request, reply) => {
   const query: RequestQueryGetLog = request.query as RequestQueryGetLog;
+  if (query.date) query.date = JSON.parse(`${query.date}`);
   const date = query.date ? `${JSON.parse(query.date)[0]}-${JSON.parse(query.date)[1]}-${JSON.parse(query.date)[2]}` : getDate({ isMore: 'formatDate' });
   const fs = resolve(dirname(fileURLToPath(import.meta.url)), `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
   reply.type('text/html');

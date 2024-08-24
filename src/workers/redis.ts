@@ -1,4 +1,3 @@
-import type { PuppeteerLifeCycleEvent } from 'puppeteer';
 // import type WorkerBrowser from './browser.js';
 // import type WorkerServer from './server.js';
 // import type { Remote } from 'comlink';
@@ -11,8 +10,8 @@ import { loggerRedis } from '../utils/logger.js';
 
 type ServerCommands = 'server' | 'browser' | 'exit' | 'connect';
 export type KeyOfConfig = keyof typeof CONFIG;
-type TypeOfConfig = typeof CONFIG;
-type ValueType = string | number | boolean | PuppeteerLifeCycleEvent[] | [string, string] | string[] | undefined;
+export type TypeOfConfig = typeof CONFIG;
+export type ValueType = TypeOfConfig[keyof TypeOfConfig];
 
 // cache deal
 export type CacheDeal = {
