@@ -210,6 +210,29 @@ class WorkerBrowser {
     return page;
   };
 
+  setPageDefault = async () => {
+    // set page deals
+    loggerBrowser.info(`Создание основной страницы`);
+    const url = 'https://skycrypto.me/deals';
+    let page = await this.initPage(url);
+    if (!page) {
+      loggerBrowser.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
+      return false;
+    }
+
+    // check auth
+    page = await this.checkAuth(page, url);
+    if (!page) {
+      loggerBrowser.error(new Error('Ошибка авторизации page'), 'Не удалось провести авторизацию page deals');
+      return false;
+    }
+
+    // save page
+    loggerBrowser.log('Сохранияем адрес ссылки на сделки');
+    this.deals = page;
+    return page;
+  };
+
   initBrowser = async (headless?: boolean) => {
     try {
       loggerBrowser.info('Установка конфигурации браузера');
@@ -223,30 +246,13 @@ class WorkerBrowser {
       loggerBrowser.info(`Создание браузера`);
       this.browser = await puppeteerExtra.launch(params);
 
-      // set page deals
-      loggerBrowser.info(`Создание основной страницы`);
-      const url = 'https://skycrypto.me/deals';
-      let page = await this.initPage(url);
-      if (!page) {
-        loggerBrowser.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
-        return false;
-      }
-
-      // check auth
-      page = await this.checkAuth(page, url);
-      if (!page) {
-        loggerBrowser.error(new Error('Ошибка авторизации page'), 'Не удалось провести авторизацию page deals');
-        return false;
-      }
+      // set page
+      await this.setPageDefault();
 
       // close 0 page
       loggerBrowser.log('Удаляем ненужную страницу');
       const pageNull = (await this.browser.pages())[0];
       await pageNull.close();
-
-      // save page
-      loggerBrowser.log('Сохранияем адрес ссылки на сделки');
-      this.deals = page;
 
       // end
       loggerBrowser.info('Установка базовой конфигурации завершена');
@@ -475,13 +481,30 @@ class WorkerBrowser {
     loggerBrowser.log(`Производим запрос (${localCode})`);
     const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     try {
-      console.log(localCode);
       const result = await localPage.evaluate(localCode);
 
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
       return result as Type;
     } catch (error: unknown) {
       loggerBrowser.error(error);
+      if (String(error).includes('401') && String(error).includes('Unauthorized')) {
+        // set page
+        const nowPage = await this.setPageDefault();
+        if (nowPage === false) {
+          return null;
+        }
+
+        // close 0 page
+        if (this.browser) {
+          loggerBrowser.log('Удаляем ненужную страницу');
+          const pagesNull = await this.browser.pages();
+          if (pagesNull.length > 1) await pagesNull[0].close();
+        }
+
+        await this.updateKeys(nowPage);
+        return await this.evalute<Type>({ page: nowPage, code }, cnt + 1);
+      }
+
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         await delay(delayCnt);
