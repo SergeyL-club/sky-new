@@ -487,7 +487,7 @@ class WorkerBrowser {
       return result as Type;
     } catch (error: unknown) {
       loggerBrowser.error(error);
-      if (String(error).includes('401') && String(error).includes('Unauthorized')) {
+      if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
         // set page
         const nowPage = await this.setPageDefault();
         if (nowPage === false) {
@@ -506,6 +506,7 @@ class WorkerBrowser {
       }
 
       if (cnt < maxCnt) {
+        await this.waitReAuth();
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
