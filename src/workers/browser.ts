@@ -463,6 +463,7 @@ class WorkerBrowser {
     });
 
   evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
+    if (this.isReAuth) await this.waitReAuth();
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
     // проверяем page
     if (page) this.injectStatic(page);
