@@ -28,7 +28,7 @@ export const TIME_DISPUTE_TIMER_PHONE: number = 900000;
 export const DELAY_TIMER_PHONE: number = 1000;
 
 // конфиг браузера
-export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 60000; // ожидание ответа страницы или других загрузок
+export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 30000; // ожидание ответа страницы или других загрузок
 export const WAIT_UNTIL: WaitForOptions['waitUntil'] = 'networkidle2'; // тип ожидания (см. в waitUntil puppeteer)
 export const URL_MAIN_AUTH: string = 'https://skycrypto.me'; // ссылка проверка (если он находится тут значит надо авторизация), также ссылка начала авторизации
 export const URL_DEALS: string = 'https://skycrypto.me/deals'; // ссылка где находятся сделки

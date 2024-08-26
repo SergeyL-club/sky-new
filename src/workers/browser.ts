@@ -210,7 +210,7 @@ class WorkerBrowser {
     return page;
   };
 
-  setPageDefault = async () => {
+  setPageDefault = async (reload: boolean = false) => {
     // set page deals
     loggerBrowser.info(`Создание основной страницы`);
     const url = 'https://skycrypto.me/deals';
@@ -218,6 +218,16 @@ class WorkerBrowser {
     if (!page) {
       loggerBrowser.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
       return false;
+    }
+
+    if (reload) {
+      // close 0 page
+      if (this.browser) {
+        loggerBrowser.log('Удаляем ненужную страницу');
+        const pagesNull = await this.browser.pages();
+        if (pagesNull.length > 1) await pagesNull[0].close();
+      }
+      this.deals = null;
     }
 
     // check auth
@@ -463,7 +473,6 @@ class WorkerBrowser {
     });
 
   evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
-    if (this.isReAuth) await this.waitReAuth();
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
     // проверяем page
     if (page) this.injectStatic(page);
@@ -490,16 +499,9 @@ class WorkerBrowser {
       loggerBrowser.error(error);
       if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
         // set page
-        const nowPage = await this.setPageDefault();
+        const nowPage = await this.setPageDefault(true);
         if (nowPage === false) {
           return null;
-        }
-
-        // close 0 page
-        if (this.browser) {
-          loggerBrowser.log('Удаляем ненужную страницу');
-          const pagesNull = await this.browser.pages();
-          if (pagesNull.length > 1) await pagesNull[0].close();
         }
 
         await this.updateKeys(nowPage);
