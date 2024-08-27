@@ -483,7 +483,6 @@ class WorkerBrowser {
     loggerBrowser.log('Поиск регулярок и их замена');
     if (localCode.includes('[authKey]')) localCode = localCode.split('[authKey]').join(`${this.authKey}`);
 
-    loggerBrowser.log(`Запрос на browser, код (с заменой регулярок): ${localCode}`);
     try {
       // проверяем page
       if (page) this.injectStatic(page);
