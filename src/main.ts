@@ -13,6 +13,7 @@ import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
 import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
 import { fileURLToPath } from 'node:url';
+import { delay } from './utils/dateTime.js';
 
 const ignoreList = [] as string[];
 
@@ -89,8 +90,10 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   await redis.setCacheDeal(allDeals);
 
   if (newDeals.length > 0) logger.log(`Отправляем на обработку новые сделки`);
+  const delayUpdate = (await redis.getConfig('DELAY_POLLING_DEALS_UPDATE')) as number;
   for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
     const deal = newDeals[indexNewDeal];
+    if (indexNewDeal > 0) await delay(delayUpdate);
     Promise.resolve(transDeal(redis, browser, deal));
   }
 }

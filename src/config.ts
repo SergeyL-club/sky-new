@@ -53,6 +53,7 @@ export const POLLING_DEALS_USDT: boolean = true;
 export const DELAY_POLLING_DEALS: number = 10000;
 export const POLLING_DEALS_LIMIT_BTC: number = 20;
 export const POLLING_DEALS_LIMIT_USDT: number = 20;
+export const DELAY_POLLING_DEALS_UPDATE: number = 5000;
 
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-new:configs`;
