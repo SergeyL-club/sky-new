@@ -211,6 +211,7 @@ class WorkerBrowser {
   };
 
   setPageDefault = async (reload: boolean = false) => {
+    this.isReAuth = true;
     // set page deals
     loggerBrowser.info(`Создание основной страницы`);
     const url = 'https://skycrypto.me/deals';
@@ -240,6 +241,9 @@ class WorkerBrowser {
     // save page
     loggerBrowser.log('Сохранияем адрес ссылки на сделки');
     this.deals = page;
+    if (reload) await this.updateKeys(page);
+
+    this.isReAuth = false;
     return page;
   };
 
@@ -354,14 +358,12 @@ class WorkerBrowser {
     const checkMain = localPage.url() == urlMainAuth || localPage.url() == `${urlMainAuth}/`;
 
     if (error || checkMain || localPage.url() != url) {
-      this.isReAuth = true;
       loggerBrowser.log('Не авторизирован, попытка авторизироваться');
       const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
       await delay(random(delayEventMin, delayEventMax));
       if (!(await this.auth(localPage))) return null;
       loggerBrowser.log(`Переходит на нужную ссылку (${page.url()}, ${url})`);
       await this.goto(localPage, url);
-      this.isReAuth = false;
     }
 
     loggerBrowser.log(`Завершили проверку авторизации (${page.url()})`);
@@ -473,44 +475,44 @@ class WorkerBrowser {
     });
 
   evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
+    const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
-    // проверяем page
-    if (page) this.injectStatic(page);
-    const localPage = page ?? this.deals;
-    if (!localPage) {
-      loggerBrowser.warn('Не удалось сделать запрос, т.к. отсутсвует page');
-      return null;
-    }
 
     // проверка регулярок
     let localCode = `${code}`;
     loggerBrowser.log('Поиск регулярок и их замена');
     if (localCode.includes('[authKey]')) localCode = localCode.split('[authKey]').join(`${this.authKey}`);
 
-    // делаем запрос и отдаем ответ
-    loggerBrowser.log(`Производим запрос (${localCode})`);
-    const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
+    loggerBrowser.log(`Запрос на browser, код (с заменой регулярок): ${localCode}`);
     try {
+      // проверяем page
+      if (page) this.injectStatic(page);
+      const localPage = page ?? this.deals;
+      if (!localPage) {
+        loggerBrowser.warn('Не удалось сделать запрос, т.к. отсутсвует page');
+        throw new Error('401, Unauthorized, page null');
+      }
+
+      // делаем запрос и отдаем ответ
+      loggerBrowser.log(`Производим запрос (${localCode})`);
       const result = await localPage.evaluate(localCode);
 
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
       return result as Type;
     } catch (error: unknown) {
       loggerBrowser.error(error);
-      if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
-        // set page
-        const nowPage = await this.setPageDefault(true);
-        if (nowPage === false) {
-          return null;
+      if (cnt < maxCnt) {
+        loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
+        if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
+          // set page
+          const nowPage = await this.setPageDefault(true);
+          if (nowPage === false) {
+            return null;
+          }
+          return await this.evalute<Type>({ page: nowPage, code }, cnt + 1);
         }
 
-        await this.updateKeys(nowPage);
-        return await this.evalute<Type>({ page: nowPage, code }, cnt + 1);
-      }
-
-      if (cnt < maxCnt) {
         await this.waitReAuth();
-        loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
       }
