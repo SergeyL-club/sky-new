@@ -211,7 +211,6 @@ class WorkerBrowser {
   };
 
   setPageDefault = async (reload: boolean = false) => {
-    this.isReAuth = true;
     // set page deals
     loggerBrowser.info(`Создание основной страницы`);
     const url = 'https://skycrypto.me/deals';
@@ -358,6 +357,7 @@ class WorkerBrowser {
     const checkMain = localPage.url() == urlMainAuth || localPage.url() == `${urlMainAuth}/`;
 
     if (error || checkMain || localPage.url() != url) {
+      this.isReAuth = true;
       loggerBrowser.log('Не авторизирован, попытка авторизироваться');
       const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
       await delay(random(delayEventMin, delayEventMax));
