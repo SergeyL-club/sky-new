@@ -9,6 +9,11 @@ export const MTS_PAY: string[] = ['pcnOGGmbT', 'M7wEYcWleG'];
 export const PAID_URL: string = 'http://145.239.95.220';
 export const PAID_SECRET: string = 'm0nEy$ecrET';
 
+// паника служба
+export const PANIK_URL: string = 'http://145.239.95.220';
+export const PANIK_PORT_BTC: number = 8014;
+export const PANIK_PORT_USDT: number = 8024;
+
 // ид тг куда отправлять уведомления
 export const TG_ID: number = 280212417;
 

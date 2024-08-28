@@ -119,7 +119,8 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     logger.info(`Получены актуальные данные сделки ${data.id} (${data.state})`);
 
     if (data.state === 'proposed') {
-      const answer = await sendGet('http://145.239.95.220:' + (data.symbol === 'btc' ? 8014 : 8024) + '/?deal_process=' + data.id);
+      const [panikUrl, panikBtcPort, panikUsdtPort] = (await redis.getsConfig(['PANIK_URL', 'PANIK_PORT_BTC', 'PANIK_PORT_USDT'])) as [string, number, number];
+      const answer = await sendGet(panikUrl + ':' + (data.symbol === 'btc' ? panikBtcPort : panikUsdtPort) + '/?deal_process=' + data.id);
       if (answer) logger.log(`Отправили сделку ${data.id} на подтверждение`);
       else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
     }
