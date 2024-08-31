@@ -1,8 +1,8 @@
-const requisiteDeal = async (key, dealId, requisite) =>
+const requisiteDeal = async (token, key, dealId, requisite) =>
   new Promise((resolve, reject) => {
     const data = { deal_id: dealId, requisite };
     const headers = {
-      Authorization: `Bearer ${getCookie('sky_token')}`,
+      Authorization: `Bearer ${token}`,
       AuthKey: key,
       'Access-Control-Allow-Origin': '*',
       'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',

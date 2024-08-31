@@ -20,7 +20,7 @@ const ignoreList = [] as string[];
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
   const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
-  const code = (data: ReturnType<typeof params>) => `getDeals('[authKey]', ${JSON.stringify(data)})`;
+  const code = (data: ReturnType<typeof params>) => `getDeals('[accessKey]','[authKey]', ${JSON.stringify(data)})`;
 
   const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
   const usdtLimit = await redis.getConfig('POLLING_DEALS_LIMIT_USDT');
@@ -108,7 +108,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
     if (ignoreList.includes(cacheDeal.id)) return;
 
     logger.info(`Изменение сделки ${cacheDeal.id} (${cacheDeal.state})`);
-    const evaluateFunc = `getDeal('[authKey]', '${cacheDeal.id}')`;
+    const evaluateFunc = `getDeal('[accessKey]', '[authKey]', '${cacheDeal.id}')`;
     const data: DetailsDeal | null = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal | null;
     if (data === null) {
       logger.warn(`Сделка ${cacheDeal.id} (${cacheDeal.state}) не удалось получить доп информацию, отправляем в игнор и уведомляем`);
@@ -151,7 +151,7 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   logger.log(`Сделка ${phone.deal_id} найден телефон в базе, особождаем`);
   await redis.delPhoneDeal(phone.deal_id);
 
-  const evaluateFunc = `disputeDeal('[authKey]', '${phone.deal_id}')`;
+  const evaluateFunc = `disputeDeal('[accessKey]', '[authKey]', '${phone.deal_id}')`;
   const result = await browser.evalute({ code: evaluateFunc });
   if (result) {
     logger.info(`Успешно отправили в спор сделку ${phone.deal_id}, телефон: ${phone.requisite.text}`);
@@ -163,7 +163,7 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
   }
 
-  const evaluateFuncChat = `messageDeal('[authKey]', 'Денег не поступало', '${phone.buyer}', '${phone.type}')`;
+  const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', 'Денег не поступало', '${phone.buyer}', '${phone.type}')`;
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
   if (!resultChat) {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
@@ -172,7 +172,7 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   }
 
   // отключение сделок
-  const evaluateFuncTradingStatus = `tradingStatus('[authKey]', false)`;
+  const evaluateFuncTradingStatus = `tradingStatus('[accessKey]', '[authKey]', false)`;
   const resultTradingStatus = await browser.evalute({ code: evaluateFuncTradingStatus });
   if (!resultTradingStatus) {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
@@ -204,7 +204,7 @@ async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
   const phone = await redis.getPhoneDeal(deal.id);
   await redis.delPhoneDeal(deal.id);
   logger.log(`Сделка (${deal.id}) отправляем лайк пользователю`);
-  const evaluateFunc = `likeDeal('[authKey]', '${deal.id}', '${deal.buyer.nickname}')`;
+  const evaluateFunc = `likeDeal('[accessKey]', '[authKey]', '${deal.id}', '${deal.buyer.nickname}')`;
   const response = await browser.evalute({ code: evaluateFunc });
   if (!response) logger.warn(`Сделка ${deal.id} не удалось поставить лайк`);
   else logger.info(`Сделка ${deal.id} отправили лайк пользователю ${deal.buyer.nickname}`);
@@ -249,7 +249,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     logger.log({ obj: prePhone }, `Предворительный телефон найден (${deal.id}) ->`);
 
     logger.log(`Пользователь (${deal.buyer.nickname}) прошёл верификацию, подтверждение сделки (${deal.id})`);
-    const evaluateFunc = `statesNextDeal('[authKey]', '${deal.id}')`;
+    const evaluateFunc = `statesNextDeal('[accessKey]', '[authKey]', '${deal.id}')`;
     const result = await browser.evalute({ code: evaluateFunc });
     if (result) {
       logger.info(`Успешное подтверждение принятия сделки (${deal.id})`);
@@ -287,7 +287,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   // send requisite
   logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
-  const evaluateFuncRequisite = `requisiteDeal('[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
+  const evaluateFuncRequisite = `requisiteDeal('[accessKey]', '[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
   const resultRequisite = await browser.evalute({ code: evaluateFuncRequisite });
   if (!resultRequisite) {
     await ignoreDeal(redis, deal);
@@ -300,7 +300,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   // send chat
   logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
-  const evaluateFuncChat = `messageDeal('[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
+  const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
   if (!resultChat) {
     await ignoreDeal(redis, deal);
@@ -379,11 +379,11 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   logger.info(`Откуп (${phone.deal_id}, val=${val_perc}, ${market}, Откуп результат:${otk})`);
 
   logger.log(`Отправка на завершение сделки ${phone.deal_id}`);
-  const evaluateFunc = `statesNextDeal('[authKey]', '${phone.deal_id}')`;
+  const evaluateFunc = `statesNextDeal('[accessKey]', '[authKey]', '${phone.deal_id}')`;
   const result = await browser.evalute({ code: evaluateFunc });
   if (result) {
     logger.info(`Успешно отправили на завершение сделку ${phone.deal_id}`);
-    const evaluateFunc = `getDeal('[authKey]', '${phone.deal_id}')`;
+    const evaluateFunc = `getDeal('[accessKey]', '[authKey]', '${phone.deal_id}')`;
     const data: DetailsDeal | null = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal | null;
     if (!data) {
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];

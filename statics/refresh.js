@@ -1,18 +1,26 @@
-const refresh = async () =>
+const refresh = async (key, token) =>
   new Promise((resolve, reject) => {
+    const data = { token };
     const headers = {
+      AuthKey: key,
       Accept: 'application/json, text/plain, */*',
-      Authorization: `Bearer ${getCookie('sky_token')}`,
+      Authorization: `Bearer ${token}`,
       Origin: 'https://skycrypto.me',
       Referer: 'https://skycrypto.me/',
       'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+      Accept: 'application/json, text/plain, */*',
+      'Accept-Encoding': 'gzip, deflate, br, zstd',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Content-Length': `${JSON.stringify(data).length}`,
+      'Content-Type': 'application/json;charset=UTF-8',
     };
 
-    const refresh = 'https://api.skycrypto.me/rest/v1/codedata';
+    const refresh = 'https://api.skycrypto.me/rest/v1/auth/refresh';
 
     fetch(refresh, {
-      method: 'GET',
+      method: 'POST',
       headers: headers,
+      body: JSON.stringify(data),
     })
       .then(async (response) => {
         if (response.status === 200) {

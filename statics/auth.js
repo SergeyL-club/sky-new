@@ -1,10 +1,10 @@
-const likeDeal = async (token, key, dealId, userId) =>
+const authPost = async (email, password) =>
   new Promise((resolve, reject) => {
-    const data = { deal_id: dealId, method: 'like', user: userId };
+    const data = { email, password };
     const headers = {
-      Authorization: `Bearer ${token}`,
-      AuthKey: key,
-      'Access-Control-Allow-Origin': '*',
+      Accept: 'application/json, text/plain, */*',
+      Origin: 'https://skycrypto.me',
+      Referer: 'https://skycrypto.me/',
       'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
       Accept: 'application/json, text/plain, */*',
       'Accept-Encoding': 'gzip, deflate, br, zstd',
@@ -13,16 +13,16 @@ const likeDeal = async (token, key, dealId, userId) =>
       'Content-Type': 'application/json;charset=UTF-8',
     };
 
-    const url = 'https://api.skycrypto.me/rest/v1/users/vote';
+    const refresh = 'https://api.skycrypto.me/rest/v1/auth/login';
 
-    fetch(url, {
+    fetch(refresh, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(data),
     })
       .then(async (response) => {
         if (response.status === 200) {
-          return true;
+          return await response.json();
         } else {
           throw new Error(`Status: ${response.status}, ${await response.text()}`);
         }
