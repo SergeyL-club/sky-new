@@ -63,7 +63,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     const findNewDeals = deals
       .filter((now) => {
         const candidate = oldDeals.find((old) => now.id === old.id);
-        const actualState = ['proposed', 'paid'];
+        const actualState = ['paid'];
         const index = ignoreList.indexOf(now.id);
         if (index !== -1) {
           if (now.state === 'closed') ignoreList.splice(index, 1);
