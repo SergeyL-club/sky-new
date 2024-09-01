@@ -81,8 +81,15 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   };
 
   let newDeals = [] as CacheDeal[];
+  const btcNewDeals = await getNewDeals(btcDeals);
+  logger.log({ obj: btcDeals }, `Данные btc`);
+  logger.log({ obj: btcNewDeals }, `Данные btc (new)`);
+  const usdtNewDeals = await getNewDeals(usdtDeals);
+  logger.log({ obj: usdtDeals }, `Данные usdt`);
+  logger.log({ obj: usdtNewDeals }, `Данные usdt (new)`);
+
   const allDeals = btcDeals.concat(usdtDeals);
-  newDeals = newDeals.concat(await getNewDeals(allDeals));
+  newDeals = btcNewDeals.concat(usdtNewDeals);
 
   logger.info(`Общее количество сделок ${allDeals.length}`);
   logger.info(`Количество новых сделок ${newDeals.length}`);
