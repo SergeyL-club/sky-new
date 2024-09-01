@@ -15,6 +15,7 @@ import puppeteer from 'puppeteer';
 import { expose, wrap } from 'comlink';
 import md5 from 'md5';
 import { fileURLToPath } from 'node:url';
+import { pollingEvaluteCycle } from '../utils/timer.js';
 
 type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
 type WindowCustom = {
@@ -82,7 +83,11 @@ export type DetailsDeal = {
   voted: boolean;
 };
 
-// local config in worker
+type EvaluteCallback = {
+  page?: Page;
+  code: string;
+  callback: (data: string | null) => void;
+};
 
 // channels
 let redis: Remote<WorkerRedis> | null = null;
@@ -105,6 +110,7 @@ class WorkerBrowser {
   private page: Page | null;
   private browser: Browser | null;
   private isCodeUpdate: boolean;
+  private evaluteRows: EvaluteCallback[];
 
   constructor() {
     this.proxyParams = '';
@@ -115,6 +121,7 @@ class WorkerBrowser {
     this.authKey = '';
     this.access = '';
     this.refresh = '';
+    this.evaluteRows = [];
     this.keys = {};
     if (WorkerBrowser.instance) return WorkerBrowser.instance;
     WorkerBrowser.instance = this;
@@ -308,6 +315,7 @@ class WorkerBrowser {
       this.browser = await puppeteerExtra.launch(params);
 
       // set page
+      pollingEvaluteCycle(this.evaluteCycleRow.bind(this));
       await this.setPageDefault();
 
       // end
@@ -316,6 +324,21 @@ class WorkerBrowser {
     } catch (error: unknown) {
       loggerBrowser.error(error, 'Ошибка без обработки (init browser)');
       return false;
+    }
+  };
+
+  private evaluteCycleRow = async () => {
+    if (this.evaluteRows.length > 0) {
+      const dataIndex = this.evaluteRows.findIndex((el) => el.code.includes('refresh') || el.code.includes('getCodeData'));
+      let data = undefined as EvaluteCallback | undefined;
+      if (dataIndex !== -1) {
+        data = this.evaluteRows[dataIndex];
+        this.evaluteRows.splice(dataIndex, 1);
+      } else data = this.evaluteRows.shift();
+      if (!data) return;
+      this.evaluteFunc({ page: data.page, code: data.code }).then((value) => {
+        data.callback(value as string | null);
+      });
     }
   };
 
@@ -436,7 +459,7 @@ class WorkerBrowser {
       });
     });
 
-  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
+  private evaluteFunc = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
     const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
 
@@ -468,21 +491,31 @@ class WorkerBrowser {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
           if (!(await this.authRefreshEvalute())) await this.authEvalute();
-          return await this.evalute<Type>({ page, code }, cnt + 1);
+          return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
         }
 
         if (String(error).includes('412') && String(error).includes('Precondition Failed') && !this.isCodeUpdate) {
           await this.updateKeysCode();
-          return await this.evalute<Type>({ page, code }, cnt + 1);
+          return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
         }
 
         await this.waitReCode();
         await this.waitReAuth();
         await delay(delayCnt);
-        return await this.evalute<Type>({ page, code }, cnt + 1);
+        return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
       }
       return null;
     }
+  };
+
+  evalute = <Type>({ page, code }: { page?: Page; code: string }): Promise<Type | null> => {
+    return new Promise<Type>((resolve) => {
+      this.evaluteRows.push({
+        code,
+        page,
+        callback: (data) => resolve(data as Type),
+      });
+    });
   };
 }
 

@@ -32,3 +32,9 @@ export function pollingPhone(redis: Remote<WorkerRedis>, callback: () => void | 
     });
   });
 }
+
+export function pollingEvaluteCycle(callback: () => void | Promise<void>) {
+  Promise.resolve(callback()).finally(() => {
+    delay(250).finally(() => pollingEvaluteCycle.call(null, callback));
+  });
+}
