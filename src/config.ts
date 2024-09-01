@@ -36,8 +36,6 @@ export const DELAY_TIMER_PHONE: number = 1000;
 export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 30000; // ожидание ответа страницы или других загрузок
 export const WAIT_UNTIL: WaitForOptions['waitUntil'] = 'domcontentloaded'; // тип ожидания (см. в waitUntil puppeteer)
 export const URL_MAIN: string = 'https://skycrypto.me/deals'; // ссылка проверка (если он находится тут значит надо авторизация), также ссылка начала авторизации
-export const DELAY_EVENT_MIN: number = 50; // минимальная задержка действия (пример: клик, ожидание после действия)
-export const DELAY_EVENT_MAX: number = 100; // максимальная задержка действия (пример: клик, ожидание после действия)
 export const CNT_EVALUTE: number = 3;
 export const DELAY_CNT: number = 5000;
 

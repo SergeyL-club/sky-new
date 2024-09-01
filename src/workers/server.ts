@@ -183,26 +183,7 @@ worker.on('menu', async (request, reply) => {
   const keys = Object.keys(CONFIG) as KeyOfConfig[];
   const values = (await redis?.getsConfig(keys)) as (string | number | boolean | [string, string])[];
   const query: RequestQueryMenu = request.query as RequestQueryMenu;
-  const ignoreClient: KeyOfConfig[] = [
-    'DATA_PATH_REDIS_CONFIG',
-    'DATA_PATH_REDIS_DEALS_CACHE',
-    'DB_REDIS',
-    'DELAY_EVENT_MIN',
-    'DELAY_EVENT_MAX',
-    'PORT',
-    'SELECTOR_AUTH_FORM',
-    'SELECTOR_BTN_AUTH',
-    'SELECTOR_ERROR',
-    'SELECTOR_INPUT_EMAIL',
-    'SELECTOR_INPUT_PASSWORD',
-    'SELECTOR_URL_AUTH',
-    'URL_DEALS',
-    'URL_MAIN_AUTH',
-    'URL_REDIS',
-    'WAIT_TIMEOUT',
-    'WAIT_UNTIL',
-    'DATA_PATH_REDIS_PHONE',
-  ];
+  const ignoreClient: KeyOfConfig[] = ['DATA_PATH_REDIS_CONFIG', 'DATA_PATH_REDIS_DEALS_CACHE', 'DB_REDIS', 'PORT', 'URL_REDIS', 'WAIT_TIMEOUT', 'WAIT_UNTIL', 'DATA_PATH_REDIS_PHONE'];
 
   for (let indexKey = 0; indexKey < keys.length; indexKey++) {
     const key = keys[indexKey] as KeyOfConfig;
