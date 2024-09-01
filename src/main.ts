@@ -69,7 +69,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
           if (now.state === 'closed') ignoreList.splice(index, 1);
           return false;
         }
-        return ((!candidate || now.state !== candidate.state) && actualState.includes(now.state)) || (now.dispute && now.state !== 'closed');
+        return !candidate || (now.state !== candidate.state && actualState.includes(now.state)) || (now.dispute && now.state !== 'closed');
       })
       .map((now) => ({ id: now.id, state: now.state }));
     const findCancelDeals = oldDeals
