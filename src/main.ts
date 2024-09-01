@@ -8,7 +8,7 @@ import type { DetailsDeal } from './workers/browser.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
-import logger, { loggerBrowser } from './utils/logger.js';
+import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
 import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
@@ -482,14 +482,13 @@ const main = () =>
       }
     };
 
-    const next = () => {
-      browser.updateKeys().then(() => {
-        loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-        pollingDeals(redis, getDeals.bind(null, redis, browser));
-        pollingPhone(redis, timerPhone.bind(null, redis));
-        workerServer.on('message', (data) => {
-          if ('command' in data && data.command === 'balance') balance.call(null, redis, browser, data.phone);
-        });
+    const next = async () => {
+      browser.updateKeys();
+      // loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+      pollingDeals(redis, getDeals.bind(null, redis, browser));
+      pollingPhone(redis, timerPhone.bind(null, redis));
+      workerServer.on('message', (data) => {
+        if ('command' in data && data.command === 'balance') balance.call(null, redis, browser, data.phone);
       });
     };
 
