@@ -59,6 +59,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
   const getNewDeals = async (deals: DealGet[]) => {
     const oldDeals = await redis.getCacheDeals();
+    logger.log({ obj: oldDeals }, `Данные списка из памяти`);
 
     const findNewDeals = deals
       .filter((now) => {
@@ -69,7 +70,11 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
           if (now.state === 'closed') ignoreList.splice(index, 1);
           return false;
         }
-        return !candidate || (now.state !== candidate.state && actualState.includes(now.state)) || (now.dispute && now.state !== 'closed');
+        const isNow = candidate === undefined;
+        const isNowState = !isNow && now.state !== candidate.state && actualState.includes(now.state);
+        const isDispute = now.dispute && now.state !== 'closed';
+        logger.log(`Сделка ${now.id} (${isNow}, ${isNowState}, ${isDispute})`);
+        return isNow || isNowState || isDispute;
       })
       .map((now) => ({ id: now.id, state: now.state }));
     const findCancelDeals = oldDeals
