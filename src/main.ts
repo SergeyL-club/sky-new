@@ -64,17 +64,18 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
     const findNewDeals = deals
       .filter((now) => {
         const candidate = oldDeals.find((old) => now.id === old.id);
-        const actualState = ['paid'];
+        const actualState = ['paid', 'proposed'];
         const index = ignoreList.indexOf(now.id);
         if (index !== -1) {
           if (now.state === 'closed') ignoreList.splice(index, 1);
           return false;
         }
         const isNow = candidate === undefined;
-        const isNowState = !isNow && now.state !== candidate.state && actualState.includes(now.state);
+        const isState = actualState.includes(now.state);
+        const isNowState = !isNow && now.state !== candidate.state && isState;
         const isDispute = now.dispute && now.state !== 'closed';
         logger.log(`Сделка ${now.id} (${isNow}, ${isNowState}, ${isDispute})`);
-        return isNow || isNowState || isDispute;
+        return (isNow && isState) || isNowState || isDispute;
       })
       .map((now) => ({ id: now.id, state: now.state }));
     const findCancelDeals = oldDeals
