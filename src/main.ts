@@ -283,6 +283,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
     const [paidUrl, servicePort] = await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
     const prePhone = await getNumber<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
+    logger.log({ obj: prePhone }, `Предворительные данные ->`);
     if (typeof prePhone === 'boolean' || Number(prePhone['result']) != 1) {
       logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
