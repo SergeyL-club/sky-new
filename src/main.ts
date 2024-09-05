@@ -40,6 +40,7 @@ async function processMessage(redis: Remote<WorkerRedis>, data: PhoneData, pre =
   let text = pre
     ? ((await redis.getConfig(`PRE_PAY_MESSAGES_${key.toUpperCase()}` as KeyOfConfig)) as string)
     : ((await redis.getConfig(`PAY_MESSAGES_${key.toUpperCase()}` as KeyOfConfig)) as string);
+  logger.log(`Данные text (${key}, ${pre}): ${text}`);
   for (const k in data) {
     const v = data[k as keyof typeof data];
     text = text.split('{' + k + '}').join(String(v));
