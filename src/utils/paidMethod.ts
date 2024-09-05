@@ -55,16 +55,53 @@ export async function sendRequest<Type>(url: string, subUrl: string, maxRepeat =
   return JSON.parse(result + '');
 }
 
-export async function getNumber<Type>(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, is_pre = false) {
-  let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
-  if (is_pre) subUrl += '&test=1';
-  return await sendRequest<Type>(url, subUrl);
+export async function unlockNumber(url: string, phone: string) {
+  const subUrl = 'action=lock_check&number=' + phone + '&val=0';
+  return await sendRequest(url, subUrl);
 }
 
-export async function unlockNumber<Type>(url: string, id: string) {
-  const subUrl = `start-checking-balance?deal_id=${id}`;
-  return await sendRequest<Type>(url, subUrl);
+export async function lockNumber(url: string, phone: string) {
+  const subUrl = 'action=lock_check&number=' + phone + '&val=1';
+  return await sendRequest(url, subUrl);
 }
+
+export async function delNumber(url: string, phone: string) {
+  const subUrl = 'action=del_number&number=' + phone;
+  return await sendRequest(url, subUrl);
+}
+
+export async function delAndUnlock(url: string, phone: string) {
+  await unlockNumber(url, phone);
+  await delNumber(url, phone);
+}
+
+export async function getNumberPossible<Type>(url: string, sum: number, id: number = -1, isQiwi = false): Promise<Type> {
+  let subUrl = `action=get_sim_possible&sum=${sum}&lock_check=1&is_qiwi=${isQiwi ? 1 : 0}`;
+  if (id > -1) subUrl += '&id=' + id;
+  return (await sendRequest(url, subUrl)) as Type;
+}
+
+export async function getNumber<Type>(url: string, sum: number, id: number = -1, isQiwi = false): Promise<Type> {
+  let subUrl = `action=get_sim&sum=${sum}&lock_check=1&is_qiwi=${isQiwi ? 1 : 0}`;
+  if (id > -1) subUrl += '&id=' + id;
+  return (await sendRequest(url, subUrl)) as Type;
+}
+
+export async function lockSimTime(url: string, phone: string, time = 5 * 60) {
+  const subUrl = 'action=set_wait&number=' + phone + '&time=' + time;
+  return await sendRequest(url, subUrl);
+}
+
+// export async function getNumber<Type>(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, is_pre = false) {
+//   let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
+//   if (is_pre) subUrl += '&test=1';
+//   return await sendRequest<Type>(url, subUrl);
+// }
+
+// export async function unlockNumber<Type>(url: string, id: string) {
+//   const subUrl = `start-checking-balance?deal_id=${id}`;
+//   return await sendRequest<Type>(url, subUrl);
+// }
 
 export async function sendGet(url: string): Promise<string | false> {
   return new Promise((resolve) => {

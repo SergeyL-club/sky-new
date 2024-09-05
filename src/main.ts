@@ -11,7 +11,7 @@ import { wrap } from 'comlink';
 import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
-import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
+import { delAndUnlock, get_method_str, getNumber, getNumberPossible, lockSimTime, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
 import { fileURLToPath } from 'node:url';
 import { delay } from './utils/dateTime.js';
 
@@ -245,6 +245,13 @@ async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
   logger.info(`Сделка ${deal.id} завершена, очищаем телефон и ставим лайк`);
   logger.log(`Сделка ${deal.id} очищаем телефон`);
   const phone = await redis.getPhoneDeal(deal.id);
+  if (phone) {
+    const port = (await redis.getConfig('MTS_PORT')) as number;
+    const methodStr = await get_method_str(port, redis);
+    const [paidUrl, servicePort] = (await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as [string, number];
+    await delAndUnlock(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+    await lockSimTime(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+  }
   await redis.delPhoneDeal(deal.id);
   logger.log(`Сделка (${deal.id}) отправляем лайк пользователю`);
   const evaluateFunc = `likeDeal('[accessKey]', '[authKey]', '${deal.id}', '${deal.buyer.nickname}')`;
@@ -276,13 +283,13 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 
     // check pre phone
     const methodStr = await get_method_str(port, redis);
-    const methodId = await get_method_id(methodStr);
+    // const methodId = await get_method_id(methodStr);
 
     const amount = `${deal.amount_currency}`;
 
     logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
     const [paidUrl, servicePort] = await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
-    const prePhone = await getNumber<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
+    const prePhone = await getNumberPossible<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), deal.deal_id);
     logger.log({ obj: prePhone }, `Предворительные данные ->`);
     if (typeof prePhone === 'boolean' || Number(prePhone['result']) != 1) {
       logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
@@ -313,7 +320,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 
 async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal, port: number) {
   const methodStr = await get_method_str(port, redis);
-  const methodId = await get_method_id(methodStr);
+  // const methodId = await get_method_id(methodStr);
 
   const [tgId, mainPort, servicePort] = (await redis.getsConfig(['TG_ID', 'PORT', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as number[];
 
@@ -321,7 +328,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
   const paidUrl = await redis.getConfig('PAID_URL');
-  const phone = await getNumber<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
+  const phone = await getNumber<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), deal.deal_id);
   if (typeof phone === 'boolean' || Number(phone['result']) != 1) {
     logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${methodStr})`));
     await ignoreDeal(redis, deal);
@@ -398,7 +405,7 @@ async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   const phone = await redis.getPhoneDeal(deal.id);
   if (!phone) return logger.warn(`Сделка ${deal.id} была в состоянии paid, но не имеет телефона`);
   const [paidUrl, servicePort] = await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
-  const response = await unlockNumber(`${paidUrl}:${servicePort}/`, String(phone.id));
+  const response = await unlockNumber(`${paidUrl}:${servicePort}/`, String(phone.requisite.text));
   if (!response) return logger.warn(`Сделка ${deal.id} не удалось unlock number для проверки телефона`);
   const now = Date.now();
   await redis.setPhone({ ...phone, unlock_at: now });
