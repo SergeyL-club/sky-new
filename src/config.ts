@@ -3,7 +3,7 @@ export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
 // конфиг mts
 export const MTS_PORT: number = 5001;
-export const MTS_PAY: string[] = [];
+export const MTS_PAY: string[] = ['BXSOp1iH56', 'G5XHNNpNKB', 'YdPDo4dzh5'];
 export const MTS_PERC_MIN: number = -1;
 export const MTS_PERC_MAX: number = 5;
 
