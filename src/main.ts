@@ -32,6 +32,8 @@ const ignoreList = [] as string[];
 
 async function processMessage(redis: Remote<WorkerRedis>, data: PhoneData, pre = false) {
   let key = 'other';
+  const localData: Omit<PhoneData, 'status'> = { ...data };
+  if ('status' in localData) delete localData['status'];
   if (data.url) key = 'url';
   else if (data.card && data.card != '') key = 'card';
   else key = 'mts';
