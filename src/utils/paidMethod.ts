@@ -56,17 +56,17 @@ export async function sendRequest<Type>(url: string, subUrl: string, maxRepeat =
 }
 
 export async function unlockNumber(url: string, phone: string) {
-  const subUrl = 'action=lock_check&number=' + phone + '&val=0';
+  const subUrl = '?action=lock_check&number=' + phone + '&val=0';
   return await sendRequest(url, subUrl);
 }
 
 export async function lockNumber(url: string, phone: string) {
-  const subUrl = 'action=lock_check&number=' + phone + '&val=1';
+  const subUrl = '?action=lock_check&number=' + phone + '&val=1';
   return await sendRequest(url, subUrl);
 }
 
 export async function delNumber(url: string, phone: string) {
-  const subUrl = 'action=del_number&number=' + phone;
+  const subUrl = '?action=del_number&number=' + phone;
   return await sendRequest(url, subUrl);
 }
 
@@ -76,19 +76,19 @@ export async function delAndUnlock(url: string, phone: string) {
 }
 
 export async function getNumberPossible<Type>(url: string, sum: number, id: number = -1, isQiwi = false): Promise<Type> {
-  let subUrl = `action=get_sim_possible&sum=${sum}&lock_check=1&is_qiwi=${isQiwi ? 1 : 0}`;
+  let subUrl = `?action=get_sim_possible&sum=${sum}&lock_check=1&is_qiwi=${isQiwi ? 1 : 0}`;
   if (id > -1) subUrl += '&id=' + id;
   return (await sendRequest(url, subUrl)) as Type;
 }
 
 export async function getNumber<Type>(url: string, sum: number, id: number = -1, isQiwi = false): Promise<Type> {
-  let subUrl = `action=get_sim&sum=${sum}&lock_check=1&is_qiwi=${isQiwi ? 1 : 0}`;
+  let subUrl = `?action=get_sim&sum=${sum}&lock_check=1&is_qiwi=${isQiwi ? 1 : 0}`;
   if (id > -1) subUrl += '&id=' + id;
   return (await sendRequest(url, subUrl)) as Type;
 }
 
 export async function lockSimTime(url: string, phone: string, time = 5 * 60) {
-  const subUrl = 'action=set_wait&number=' + phone + '&time=' + time;
+  const subUrl = '?action=set_wait&number=' + phone + '&time=' + time;
   return await sendRequest(url, subUrl);
 }
 
