@@ -15,7 +15,35 @@ import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlock
 import { fileURLToPath } from 'node:url';
 import { delay } from './utils/dateTime.js';
 
+type PhoneData = {
+  status: string;
+  url?: string;
+  card?: string;
+  login?: string;
+  qiwi?: string;
+  yandex?: string;
+  mts?: string;
+  other?: string;
+  number: string;
+  ammount: number;
+};
+
 const ignoreList = [] as string[];
+
+async function processMessage(redis: Remote<WorkerRedis>, data: PhoneData, pre = false) {
+  let key = 'other';
+  if (data.url) key = 'url';
+  else if (data.card && data.card != '') key = 'card';
+  else key = 'mts';
+  let text = pre
+    ? ((await redis.getConfig(`PRE_PAY_MESSAGES_${key.toUpperCase()}` as KeyOfConfig)) as string)
+    : ((await redis.getConfig(`PAY_MESSAGES_${key.toUpperCase()}` as KeyOfConfig)) as string);
+  for (const k in data) {
+    const v = data[k as keyof typeof data];
+    text = text.split('{' + k + '}').join(String(v));
+  }
+  return text;
+}
 
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
@@ -254,8 +282,8 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 
     logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
     const [paidUrl, servicePort] = await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
-    const prePhone = await getNumber(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
-    if (typeof prePhone === 'boolean') {
+    const prePhone = await getNumber<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
+    if (typeof prePhone === 'boolean' || Number(prePhone['status']) != 1) {
       logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
       await ignoreDeal(redis, deal);
@@ -292,8 +320,8 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
   const paidUrl = await redis.getConfig('PAID_URL');
-  const phone = await getNumber<PhoneServiceData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
-  if (typeof phone === 'boolean') {
+  const phone = await getNumber<PhoneData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
+  if (typeof phone === 'boolean' || Number(phone['status']) != 1) {
     logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${methodStr})`));
     await ignoreDeal(redis, deal);
     return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты, нужно проверить`, tgId, mainPort);
@@ -301,30 +329,33 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   logger.info({ obj: phone }, `Телефон найден (${deal.id}) ->`);
 
   // send requisite
-  logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
-  const evaluateFuncRequisite = `requisiteDeal('[accessKey]', '[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
+  const msgRequisiteText = await processMessage(redis, phone, false);
+  logger.log(`Отправка реквизитов (${deal.id}): ${msgRequisiteText}`);
+  const evaluateFuncRequisite = `requisiteDeal('[accessKey]', '[authKey]', '${deal.id}', '${msgRequisiteText}')`;
   const resultRequisite = await browser.evalute({ code: evaluateFuncRequisite });
   if (!resultRequisite) {
     await ignoreDeal(redis, deal);
-    return await sendTgNotify(
-      `(sky) Неудалось отправить реквизиты сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
-      tgId,
-      mainPort,
-    );
+    return await sendTgNotify(`(sky) Неудалось отправить реквизиты сделки ${deal.id} (${phone}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`, tgId, mainPort);
   }
 
   // send chat
-  logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
-  const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
+  const msgChatText = await processMessage(redis, phone, true);
+  logger.log(`Отправка сообщения в чат (${deal.id}): ${msgChatText}`);
+  const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', '${msgChatText}', '${deal.buyer.nickname}', '${deal.symbol}')`;
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
   if (!resultChat) {
     await ignoreDeal(redis, deal);
-    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.number}, ${amount}), нужно обработать самому`, tgId, mainPort);
   }
 
   // save redis phone
-  logger.log(`Сохраняем сделку и телефон (${deal.id}, ${deal.deal_id}, ${phone.requisite.text}, ${amount})`);
+  logger.log(`Сохраняем сделку и телефон (${deal.id}, ${deal.deal_id}, ${phone.number}, ${amount})`);
   const now = Date.now();
+  const [minPerc, maxPerc] = (await redis.getsConfig(['MTS_PERC_MIN', 'MTS_PERC_MAX'])) as [number, number];
+  const delay = Math.ceil(Number(amount) / 100);
+  const minAmount = Number(amount) - delay * minPerc;
+  const maxAmount = Number(amount) + delay * maxPerc;
+
   redis.setPhone({
     create_at: now,
     unlock_at: now,
@@ -335,11 +366,11 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
     buyer: deal.buyer.nickname,
     amount_type: deal.amount,
     requisite: {
-      chat_text: phone.requisite.chat_text,
-      requisite_text: phone.requisite.requisite_text,
-      text: phone.requisite.text,
-      max_payment_sum: Number(phone.requisite.max_payment_sum),
-      min_payment_sum: Number(phone.requisite.min_payment_sum),
+      chat_text: msgChatText,
+      requisite_text: msgRequisiteText,
+      text: phone.number,
+      max_payment_sum: maxAmount,
+      min_payment_sum: minAmount,
     },
   });
   logger.info(`Ожидание подтверждения от покупателя пополнение на телефон`);

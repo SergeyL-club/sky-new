@@ -2,27 +2,29 @@ import type { WaitForOptions } from 'puppeteer';
 export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
 // конфиг mts
-export const MTS_PORT: number = 29980;
-export const MTS_PAY: string[] = ['pcnOGGmbT', 'M7wEYcWleG'];
+export const MTS_PORT: number = 5001;
+export const MTS_PAY: string[] = [];
+export const MTS_PERC_MIN: number = -1;
+export const MTS_PERC_MAX: number = 5;
 
 // адрес на службы (mts, qiwi, yandex, payeer)
-export const PAID_URL: string = 'http://145.239.95.220';
+export const PAID_URL: string = 'http://198.244.148.197';
 export const PAID_SECRET: string = 'm0nEy$ecrET';
 
 // паника служба
-export const PANIK_URL: string = 'http://145.239.95.220';
-export const PANIK_PORT_BTC: number = 8014;
-export const PANIK_PORT_USDT: number = 8014;
+export const PANIK_URL: string = 'http://198.244.148.197';
+export const PANIK_PORT_BTC: number = 8012;
+export const PANIK_PORT_USDT: number = 8022;
 
 // ид тг куда отправлять уведомления
-export const TG_ID: number = 280212417;
+export const TG_ID: number = 6120899453;
 
 // порт запуска на сервере (запросы по этому порту отправлять)
-export const PORT: number = 13004;
+export const PORT: number = 8001;
 
 // майл и пороль для входа в sky
-export const EMAIL: string = 'support@bizoninvest.com';
-export const PASSWORD: string = 'fMwbh7XeXdTYNci';
+export const EMAIL: string = 'bigboxspam@mail.ru';
+export const PASSWORD: string = 'ytNQ7QcvX8';
 
 // конфиг сделки
 export const IS_VERIFIED: boolean = false;
@@ -54,3 +56,20 @@ export const DATA_PATH_REDIS_DEALS_CACHE: string = `sky-new:deals:cache`;
 export const DATA_PATH_REDIS_PHONE: string = `sky-new:phone`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;
+
+// данные для ввода в чат
+export const PRE_PAY_MESSAGES_URL: string = `Здвравствуйте.через 1-2 минуты выдам реквезиты. Перевод только по выданным реквезитам . других реквезитов нет.`;
+export const PRE_PAY_MESSAGES_CARD: string = `Здвравствуйте.через 1-2 минуты выдам реквезиты. Перевод только по выданным реквезитам . других реквезитов нет.`;
+export const PRE_PAY_MESSAGES_LOGIN: string = `Здвравствуйте.через 1-2 минуты выдам реквезиты. Перевод только по выданным реквезитам . других реквезитов нет.`;
+export const PRE_PAY_MESSAGES_QIWI: string = `Здвравствуйте.через 1-2 минуты выдам реквезиты. Перевод только по выданным реквезитам . других реквезитов нет.`;
+export const PRE_PAY_MESSAGES_YANDEX: string = `Здвравствуйте.через 1-2 минуты выдам реквезиты. Перевод только по выданным реквезитам . других реквезитов нет.`;
+export const PRE_PAY_MESSAGES_MTS: string = `Перевод только по выданным реквизитам. Других реквизитов нет.Пополнение через терминал только до 4000руб.`;
+export const PRE_PAY_MESSAGES_OTHER: string = `Перевод только по выданным реквизитам. Других реквизитов нет.  !!автоплатежи не обрабатываем!! от ВТБ не принимаем оплату !!`;
+
+// данные для ввода в реквизиты
+export const PAY_MESSAGES_URL: string = `0000000. Оплата по счету. Ссылка для оплаты: {url}`;
+export const PAY_MESSAGES_CARD: string = `Карта QIWI (без комиссии): {card} \r\nФорма оплаты: qiwi.com/payment/form/31873`;
+export const PAY_MESSAGES_LOGIN: string = `Реквизиты: 0000000. Перевод по Никнейму:  {login}`;
+export const PAY_MESSAGES_QIWI: string = `+7{number} только Qiwi, Без комментария.`;
+export const PAY_MESSAGES_YANDEX: string = `https://yoomoney.ru/oplata/popolnenie-koshelka-qiwi?rapida_param1=+7{number}&netSum={amount}`;
+export const PAY_MESSAGES_OTHER: string = `+7{number} пополнять только с Qiwi`;
