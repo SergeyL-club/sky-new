@@ -72,4 +72,5 @@ export const PAY_MESSAGES_CARD: string = `Карта QIWI (без комисси
 export const PAY_MESSAGES_LOGIN: string = `Реквизиты: 0000000. Перевод по Никнейму:  {login}`;
 export const PAY_MESSAGES_QIWI: string = `+7{number} только Qiwi, Без комментария.`;
 export const PAY_MESSAGES_YANDEX: string = `https://yoomoney.ru/oplata/popolnenie-koshelka-qiwi?rapida_param1=+7{number}&netSum={amount}`;
+export const PAY_MESSAGES_MTS: string = `ПОПОЛНЕНИЕ НОМЕРА ТЕЛЕФОНА. МТС: +7{number} пополнение с терминала запрещены`;
 export const PAY_MESSAGES_OTHER: string = `+7{number} пополнять только с Qiwi`;
