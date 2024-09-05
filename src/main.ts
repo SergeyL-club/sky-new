@@ -231,6 +231,11 @@ async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   if (phone) {
     logger.log(`Сделка ${deal.id} найден телефон в базе, особождаем`);
     await redis.delPhoneDeal(deal.id);
+    const port = (await redis.getConfig('MTS_PORT')) as number;
+    const methodStr = await get_method_str(port, redis);
+    const [paidUrl, servicePort] = (await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as [string, number];
+    await delAndUnlock(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+    await lockSimTime(`${paidUrl}:${servicePort}/`, phone.requisite.text);
   } else logger.log(`Сделка ${deal.id} не найден телефон`);
 
   logger.log(`Ставим игнор на сделку ${deal.id}`);
