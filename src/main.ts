@@ -369,7 +369,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   const now = Date.now();
   const [minPerc, maxPerc] = (await redis.getsConfig(['MTS_PERC_MIN', 'MTS_PERC_MAX'])) as [number, number];
   const delay = Math.ceil(Number(amount) / 100);
-  const minAmount = Number(amount) - delay * minPerc;
+  const minAmount = Number(amount) + delay * minPerc;
   const maxAmount = Number(amount) + delay * maxPerc;
 
   redis.setPhone({
