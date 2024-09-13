@@ -147,6 +147,16 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
   try {
     if (cacheDeal.state === 'cancel') {
       logger.info(`Сделка ${cacheDeal.id} ушла из списка (cancel), очищаем её`);
+      const phone = await redis.getPhoneDeal(cacheDeal.id);
+      if (phone) {
+        logger.log(`Сделка ${cacheDeal.id} найден телефон в базе, особождаем`);
+        await redis.delPhoneDeal(cacheDeal.id);
+        const port = (await redis.getConfig('MTS_PORT')) as number;
+        const methodStr = await get_method_str(port, redis);
+        const [paidUrl, servicePort] = (await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as [string, number];
+        await delAndUnlock(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+        await lockSimTime(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+      } else logger.log(`Сделка ${cacheDeal.id} не найден телефон`);
       return await redis.delPhoneDeal(cacheDeal.id);
     }
 
