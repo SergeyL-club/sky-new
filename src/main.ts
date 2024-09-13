@@ -438,12 +438,12 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   // await redis.delPhoneDeal(phone.deal_id);
 
   // откуп
-  const val = phone.amount_type;
-  const cur = phone.type;
-  const market = cur === 'btc' ? 'btcrub' : 'usdtrub';
-  const val_perc = val * 1.005;
-  const otk = await sendGet('http://51.68.137.132:20000/?cmd=order&volume=' + val_perc + '&market=' + market);
-  logger.info(`Откуп (${phone.deal_id}, val=${val_perc}, ${market}, Откуп результат:${otk})`);
+  // const val = phone.amount_type;
+  // const cur = phone.type;
+  // const market = cur === 'btc' ? 'btcrub' : 'usdtrub';
+  // const val_perc = val * 1.005;
+  // const otk = await sendGet('http://51.68.137.132:20000/?cmd=order&volume=' + val_perc + '&market=' + market);
+  // logger.info(`Откуп (${phone.deal_id}, val=${val_perc}, ${market}, Откуп результат:${otk})`);
 
   logger.log(`Отправка на завершение сделки ${phone.deal_id}`);
   const evaluateFunc = `statesNextDeal('[accessKey]', '[authKey]', '${phone.deal_id}')`;
