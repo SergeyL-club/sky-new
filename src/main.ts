@@ -196,11 +196,11 @@ async function ignoreDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal | CacheD
 async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
   logger.log(`Сделка ${phone.deal_id} найден телефон в базе, особождаем`);
   await redis.delPhoneDeal(phone.deal_id);
-  // const port = (await redis.getConfig('MTS_PORT')) as number;
-  // const methodStr = await get_method_str(port, redis);
-  // const [paidUrl, servicePort] = (await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as [string, number];
-  // await delAndUnlock(`${paidUrl}:${servicePort}/`, phone.requisite.text);
-  // await lockSimTime(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+  const port = (await redis.getConfig('MTS_PORT')) as number;
+  const methodStr = await get_method_str(port, redis);
+  const [paidUrl, servicePort] = (await redis.getsConfig(['PAID_URL', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as [string, number];
+  await delAndUnlock(`${paidUrl}:${servicePort}/`, phone.requisite.text);
+  await lockSimTime(`${paidUrl}:${servicePort}/`, phone.requisite.text);
 
   const evaluateFunc = `disputeDeal('[accessKey]', '[authKey]', '${phone.deal_id}')`;
   const result = await browser.evalute({ code: evaluateFunc });
