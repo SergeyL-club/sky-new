@@ -19,7 +19,7 @@ const ignoreList = [] as string[];
 
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
-  const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
+  const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit, lot_type: "sell" });
   const code = (data: ReturnType<typeof params>) => `getDeals('[accessKey]','[authKey]', ${JSON.stringify(data)})`;
 
   const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
