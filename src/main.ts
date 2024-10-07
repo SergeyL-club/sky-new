@@ -261,8 +261,8 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 
     logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
     const [paidUrl, servicePort] = await redis.getsConfig([`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
-    const prePhone = await getNumber(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
-    if (typeof prePhone === 'boolean') {
+    const prePhone = await getNumber<{} | boolean>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
+    if (typeof prePhone === 'boolean' || (prePhone && 'result' in prePhone && prePhone.result === 0)) {
       logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
       await ignoreDeal(redis, deal);
@@ -300,7 +300,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
   const paidUrl = await redis.getConfig(`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig);
   const phone = await getNumber<PhoneServiceData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
-  if (typeof phone === 'boolean') {
+  if (typeof phone === 'boolean' || (phone && 'result' in phone && phone.result === 0)) {
     logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${methodStr})`));
     await ignoreDeal(redis, deal);
     return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты, нужно проверить`, tgId, mainPort);
