@@ -36,6 +36,7 @@ export async function get_method_str(port: number, redis: Remote<WorkerRedis>) {
 export async function get_method_id(str: Awaited<ReturnType<typeof get_method_str>>) {
   if (str == 'mts') return 1;
   if (str == 'qiwi') return 2;
+  if (str === 'alfa') return 2;
   return -1;
 }
 
@@ -56,7 +57,7 @@ export async function sendRequest<Type>(url: string, subUrl: string, maxRepeat =
 }
 
 export async function getNumber<Type>(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, is_pre = false) {
-  let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
+  let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}&test=0`;
   if (is_pre) subUrl += '&test=1';
   return await sendRequest<Type>(url, subUrl);
 }
