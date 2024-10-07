@@ -335,6 +335,7 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   logger.log(`Сохраняем сделку и телефон (${deal.id}, ${deal.deal_id}, ${phone.requisite.text}, ${amount})`);
   const now = Date.now();
   redis.setPhone({
+    method: dataMethod.methodStr,
     create_at: now,
     unlock_at: now,
     id: deal.deal_id,

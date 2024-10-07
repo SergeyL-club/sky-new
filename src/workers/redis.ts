@@ -45,6 +45,7 @@ export type PhoneServiceData = {
     min_payment_sum: number;
     max_payment_sum: number;
   };
+  method: string;
   id: number;
   amount: number;
   amount_type: number;

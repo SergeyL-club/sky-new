@@ -82,7 +82,14 @@ class WorkerServer {
         tmp.push(String(v));
       });
     const hash = tmp.join(':');
-    const paidSecret = (await redis?.getConfig('PAID_SECRET')) ?? CONFIG['PAID_SECRET'];
+
+    const phone = await redis?.getPhoneId(data.id);
+    if (!phone) {
+      loggerServer.warn(`Не найден телефон по запросу (${data.id})`);
+      return await reply.send('not');
+    }
+
+    const paidSecret = await redis?.getConfig(`${phone.method.toUpperCase()}_PAID_SECRET` as KeyOfConfig);
     const sign = md5(hash + paidSecret);
     if (sign != srcSign) {
       loggerServer.error(new Error(`Хеши не сходятся: ${srcSign}, ${sign}`));
@@ -90,11 +97,6 @@ class WorkerServer {
       return;
     }
 
-    const phone = await redis?.getPhoneId(data.id);
-    if (!phone) {
-      loggerServer.warn(`Не найден телефон по запросу (${data.id})`);
-      return await reply.send('not');
-    }
     parentPort?.postMessage({ command: 'balance', phone });
     return await reply.send('ok');
   };
