@@ -262,7 +262,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
     const [paidUrl, servicePort] = await redis.getsConfig([`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
     const prePhone = await getNumber<{}>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
-    if ((typeof prePhone === 'boolean' && !prePhone) || (typeof prePhone === 'object' && 'result' in prePhone && prePhone.result === 0)) {
+    if (!prePhone || ('result' in prePhone && prePhone.result === 0)) {
       logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
       await ignoreDeal(redis, deal);
@@ -300,56 +300,11 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
   logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
   const paidUrl = await redis.getConfig(`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig);
   const phone = await getNumber<PhoneServiceData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
-  if ((typeof phone === 'boolean' && !phone) || (typeof phone === 'object' && 'result' in phone && phone.result === 0)) {
+  if (!phone || ('result' in phone && phone.result === 0)) {
     logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${methodStr})`));
     await ignoreDeal(redis, deal);
     return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты, нужно проверить`, tgId, mainPort);
   }
-  logger.info({ obj: phone }, `Телефон найден (${deal.id}) ->`);
-
-  // send requisite
-  logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
-  const evaluateFuncRequisite = `requisiteDeal('[accessKey]', '[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
-  const resultRequisite = await browser.evalute({ code: evaluateFuncRequisite });
-  if (!resultRequisite) {
-    await ignoreDeal(redis, deal);
-    return await sendTgNotify(
-      `(sky) Неудалось отправить реквизиты сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
-      tgId,
-      mainPort,
-    );
-  }
-
-  // send chat
-  logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
-  const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
-  const resultChat = await browser.evalute({ code: evaluateFuncChat });
-  if (!resultChat) {
-    await ignoreDeal(redis, deal);
-    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
-  }
-
-  // save redis phone
-  logger.log(`Сохраняем сделку и телефон (${deal.id}, ${deal.deal_id}, ${phone.requisite.text}, ${amount})`);
-  const now = Date.now();
-  redis.setPhone({
-    create_at: now,
-    unlock_at: now,
-    id: deal.deal_id,
-    deal_id: deal.id,
-    type: deal.symbol,
-    amount: deal.amount_currency,
-    buyer: deal.buyer.nickname,
-    amount_type: deal.amount,
-    requisite: {
-      chat_text: phone.requisite.chat_text,
-      requisite_text: phone.requisite.requisite_text,
-      text: phone.requisite.text,
-      max_payment_sum: Number(phone.requisite.max_payment_sum),
-      min_payment_sum: Number(phone.requisite.min_payment_sum),
-    },
-  });
-  logger.info(`Ожидание подтверждения от покупателя пополнение на телефон`);
 }
 
 async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
