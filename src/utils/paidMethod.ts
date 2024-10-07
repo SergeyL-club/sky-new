@@ -33,7 +33,7 @@ export async function get_method_str(port: number, redis: Remote<WorkerRedis>) {
   return '';
 }
 
-export async function get_method_id(str: Awaited<ReturnType<typeof get_method_str>>) {
+export async function get_method_id(str: string) {
   if (str == 'mts') return 1;
   if (str == 'qiwi') return 2;
   if (str === 'alfa') return 2;

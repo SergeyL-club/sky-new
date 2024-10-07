@@ -11,7 +11,7 @@ import { wrap } from 'comlink';
 import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
-import { get_method_id, get_method_str, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
+import { get_method_id, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
 import { fileURLToPath } from 'node:url';
 import { delay } from './utils/dateTime.js';
 
@@ -32,7 +32,10 @@ async function findMethod(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   const ports = (await redis.getsConfig(['MTS_PORT', 'ALFA_PORT'])) as number[];
   const port = ports[lotIndex];
 
-  return port;
+  // method str
+  const methodStr = ['mts', 'alfa', 'qiwi', 'payeer'][lotIndex];
+
+  return { port, methodStr };
 }
 
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
@@ -250,20 +253,19 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   const isVerified = (await redis.getConfig('IS_VERIFIED')) as unknown as boolean;
   logger.info(`Проверка пользователя (${deal.buyer.nickname}) по верификации (${isVerified}, ${deal.id})`);
   if (deal.buyer.verified === isVerified || isVerified === false) {
-    const port = await findMethod(redis, deal);
-    if (!port) return;
+    const dataMethod = await findMethod(redis, deal);
+    if (!dataMethod) return;
 
     // check pre phone
-    const methodStr = await get_method_str(port, redis);
-    const methodId = await get_method_id(methodStr);
+    const methodId = await get_method_id(dataMethod.methodStr);
 
     const amount = `${deal.amount_currency}`;
 
-    logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
-    const [paidUrl, servicePort] = await redis.getsConfig([`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
+    logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${dataMethod.methodStr})`);
+    const [paidUrl, servicePort] = await redis.getsConfig([`${dataMethod.methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${dataMethod.methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
     const prePhone = await getNumber<{}>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
     if (!prePhone || ('result' in prePhone && prePhone.result === 0)) {
-      logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${methodStr})`));
+      logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${dataMethod.methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
       await ignoreDeal(redis, deal);
       return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены предварительные реквизиты, нужно проверить`, tgId, mainPort);
@@ -275,7 +277,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     const result = await browser.evalute({ code: evaluateFunc });
     if (result) {
       logger.info(`Успешное подтверждение принятия сделки (${deal.id})`);
-      return await requisiteDeal(redis, browser, deal, port);
+      return await requisiteDeal(redis, browser, deal, dataMethod);
     } else {
       logger.warn(`Не удалось подтвердить принятие сделки (${deal.id}, ${result})`);
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
@@ -289,19 +291,19 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   }
 }
 
-async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal, port: number) {
-  const methodStr = await get_method_str(port, redis);
-  const methodId = await get_method_id(methodStr);
+async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal, dataMethod: Awaited<ReturnType<typeof findMethod>>) {
+  if (!dataMethod) return;
+  const methodId = await get_method_id(dataMethod.methodStr);
 
-  const [tgId, mainPort, servicePort] = (await redis.getsConfig(['TG_ID', 'PORT', `${methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as number[];
+  const [tgId, mainPort, servicePort] = (await redis.getsConfig(['TG_ID', 'PORT', `${dataMethod.methodStr.toUpperCase()}_PORT` as KeyOfConfig])) as number[];
 
   const amount = `${deal.amount_currency}`;
 
-  logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${methodStr})`);
-  const paidUrl = await redis.getConfig(`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig);
+  logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${dataMethod.methodStr})`);
+  const paidUrl = await redis.getConfig(`${dataMethod.methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig);
   const phone = await getNumber<PhoneServiceData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
   if (!phone || ('result' in phone && phone.result === 0)) {
-    logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${methodStr})`));
+    logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${dataMethod.methodStr})`));
     await ignoreDeal(redis, deal);
     return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты, нужно проверить`, tgId, mainPort);
   }
@@ -353,15 +355,12 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 }
 
 async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
-  const port = await findMethod(redis, deal);
-  if (!port) return;
-
-  // check pre phone
-  const methodStr = await get_method_str(port, redis);
+  const dataMethod = await findMethod(redis, deal);
+  if (!dataMethod) return;
 
   const phone = await redis.getPhoneDeal(deal.id);
   if (!phone) return logger.warn(`Сделка ${deal.id} была в состоянии paid, но не имеет телефона`);
-  const [paidUrl, servicePort] = await redis.getsConfig([`${methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
+  const [paidUrl, servicePort] = await redis.getsConfig([`${dataMethod.methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${dataMethod.methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
   const response = await unlockNumber(`${paidUrl}:${servicePort}/`, String(phone.id));
   if (!response) return logger.warn(`Сделка ${deal.id} не удалось unlock number для проверки телефона`);
   const now = Date.now();
