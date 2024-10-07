@@ -5,9 +5,17 @@ export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 export const MTS_PORT: number = 29980;
 export const MTS_PAY: string[] = ['pcnOGGmbT', 'M7wEYcWleG'];
 
+// конфиг alfa
+export const ALFA_PORT: number = 29980;
+export const ALFA_PAY: string[] = ['Dj1SxsLr8z', 'GGRIUPOQxf'];
+
 // адрес на службы (mts, qiwi, yandex, payeer)
-export const PAID_URL: string = 'http://145.239.95.220';
-export const PAID_SECRET: string = 'm0nEy$ecrET';
+export const MTS_PAID_URL: string = 'http://145.239.95.220';
+export const MTS_PAID_SECRET: string = 'm0nEy$ecrET';
+
+// адрес на службы (mts, qiwi, yandex, payeer)
+export const ALFA_PAID_URL: string = 'http://145.239.95.220';
+export const ALFA_PAID_SECRET: string = 'm0nEy$ecrET';
 
 // паника служба
 export const PANIK_URL: string = 'http://145.239.95.220';
