@@ -23,9 +23,9 @@ async function findMethod(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   const lotIndex = lotPay.findIndex((el) => el.find((lotId) => lotId === deal.lot.id));
   if (lotIndex === -1) {
     await ignoreDeal(redis, deal);
-    logger.warn(`Сделка ${deal.id} не найден нужный порт для обработки (${deal.lot.id}, ${JSON.stringify(lotPay)})`);
+    logger.warn(`Сделка ${deal.id} (${deal.deal_id}) не найден нужный порт для обработки (${deal.lot.id}, ${JSON.stringify(lotPay)})`);
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-    return await sendTgNotify(`(sky) Сделка ${deal.id} не удалось найти порт для отправки сервиса, обработайте сами`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не удалось найти порт для отправки сервиса, обработайте сами`, tgId, mainPort);
   }
 
   // get port
@@ -157,8 +157,8 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
       const [panikUrl, panikBtcPort, panikUsdtPort] = (await redis.getsConfig(['PANIK_URL', 'PANIK_PORT_BTC', 'PANIK_PORT_USDT'])) as [string, number, number];
       const answer = await sendGet(panikUrl + ':' + (data.symbol === 'btc' ? panikBtcPort : panikUsdtPort) + '/?deal_process=' + data.id);
       logger.log(`Ответ от подтвержения на сделку ${data.id}: ${answer}`);
-      if (answer) logger.log(`Отправили сделку ${data.id} на подтверждение`);
-      else logger.warn(`Не удалось отправить сделку ${data.id} на подтверждение`);
+      if (answer) logger.log(`Отправили сделку ${data.id} (${data.deal_id}) на подтверждение`);
+      else logger.warn(`Не удалось отправить сделку ${data.id} (${data.deal_id}) на подтверждение`);
     }
 
     if (data.dispute !== null) return await disputDeal(redis, data);
@@ -175,7 +175,7 @@ async function transDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrows
 }
 
 async function ignoreDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal | CacheDeal) {
-  logger.warn(`Сделка ${deal.id} ушла в ошибку, делаем игнор`);
+  logger.warn(`Сделка ${deal.id} (${'deal_id' in deal ? deal.deal_id : 'cache'}) ушла в ошибку, делаем игнор`);
   await redis.delPhoneDeal(deal.id);
   ignoreList.push(deal.id);
   // const phone = await redis.getPhoneDeal(deal.id);
@@ -184,7 +184,7 @@ async function ignoreDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal | CacheD
 }
 
 async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
-  logger.log(`Сделка ${phone.deal_id} найден телефон в базе, особождаем`);
+  logger.log(`Сделка ${phone.deal_id} (${phone.id}) найден телефон в базе, особождаем`);
   await redis.delPhoneDeal(phone.deal_id);
 
   const evaluateFunc = `disputeDeal('[accessKey]', '[authKey]', '${phone.deal_id}')`;
@@ -192,11 +192,11 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   if (result) {
     logger.info(`Успешно отправили в спор сделку ${phone.deal_id}, телефон: ${phone.requisite.text}`);
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-    await sendTgNotify(`(sky) Сделка ${phone.deal_id} отправлена в спор, нужно проверить сделку`, tgId, mainPort);
+    await sendTgNotify(`(sky) Сделка ${phone.deal_id} (${phone.id}) отправлена в спор, нужно проверить сделку`, tgId, mainPort);
   } else {
-    logger.warn(`Не удалось отправить сделку (${phone.deal_id}) в спор`);
+    logger.warn(`Не удалось отправить сделку (${phone.deal_id}, ${phone.id}) в спор`);
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-    await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}) в спор, нужно проверить сделку`, tgId, mainPort);
+    await sendTgNotify(`(sky) Не удалось отправить сделку (${phone.deal_id}, ${phone.id}) в спор, нужно проверить сделку`, tgId, mainPort);
   }
 
   const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', 'Денег не поступало', '${phone.buyer}', '${phone.type}')`;
@@ -204,7 +204,7 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   if (!resultChat) {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
     await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
-    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${phone.deal_id} ('Денег не поступало', ${phone.amount}), нужно обработать самому`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${phone.deal_id} (${phone.id}) ('Денег не поступало', ${phone.amount}), нужно обработать самому`, tgId, mainPort);
   }
 
   // отключение сделок
@@ -218,40 +218,40 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 }
 
 async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
-  logger.info(`Сделка ${deal.id} находится в споре, освобождение и отправка уведомления`);
+  logger.info(`Сделка ${deal.id} (${deal.deal_id}) находится в споре, освобождение и отправка уведомления`);
 
   const phone = await redis.getPhoneDeal(deal.id);
   if (phone) {
-    logger.log(`Сделка ${deal.id} найден телефон в базе, особождаем`);
+    logger.log(`Сделка ${deal.id} (${deal.deal_id}) найден телефон в базе, особождаем`);
     await redis.delPhoneDeal(deal.id);
-  } else logger.log(`Сделка ${deal.id} не найден телефон`);
+  } else logger.log(`Сделка ${deal.id} (${deal.deal_id}) не найден телефон`);
 
   logger.log(`Ставим игнор на сделку ${deal.id}`);
   await ignoreDeal(redis, deal);
 
-  logger.log(`Отправляем уведомление о споре сделки ${deal.id}`);
+  logger.log(`Отправляем уведомление о споре сделки ${deal.id} (${deal.deal_id})`);
   const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-  await sendTgNotify(`(sky) Сделка ${deal.id} была открыта в споре`, tgId, mainPort);
+  await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) была открыта в споре`, tgId, mainPort);
 }
 
 async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
-  logger.info(`Сделка ${deal.id} завершена, очищаем телефон и ставим лайк`);
-  logger.log(`Сделка ${deal.id} очищаем телефон`);
+  logger.info(`Сделка ${deal.id} (${deal.deal_id}) завершена, очищаем телефон и ставим лайк`);
+  logger.log(`Сделка ${deal.id} (${deal.deal_id}) очищаем телефон`);
   const phone = await redis.getPhoneDeal(deal.id);
   await redis.delPhoneDeal(deal.id);
-  logger.log(`Сделка (${deal.id}) отправляем лайк пользователю`);
+  logger.log(`Сделка (${deal.id}, ${deal.deal_id}) отправляем лайк пользователю`);
   const evaluateFunc = `likeDeal('[accessKey]', '[authKey]', '${deal.id}', '${deal.buyer.nickname}')`;
   const response = await browser.evalute({ code: evaluateFunc });
-  if (!response) logger.warn(`Сделка ${deal.id} не удалось поставить лайк`);
-  else logger.info(`Сделка ${deal.id} отправили лайк пользователю ${deal.buyer.nickname}`);
-  logger.log(`Отправляем сделку ${deal.id} в уведомление тг`);
+  if (!response) logger.warn(`Сделка ${deal.id} (${deal.deal_id}) не удалось поставить лайк`);
+  else logger.info(`Сделка ${deal.id} (${deal.deal_id}) отправили лайк пользователю ${deal.buyer.nickname}`);
+  logger.log(`Отправляем сделку ${deal.id} (${deal.deal_id}) в уведомление тг`);
   const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-  return await sendTgNotify(`(sky) Сделка ${deal.id} была завершена, сумма ${deal.amount_currency}, телефон: ${phone?.requisite.text}`, tgId, mainPort);
+  return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) была завершена, сумма ${deal.amount_currency}, телефон: ${phone?.requisite.text}`, tgId, mainPort);
 }
 
 async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
   const isVerified = (await redis.getConfig('IS_VERIFIED')) as unknown as boolean;
-  logger.info(`Проверка пользователя (${deal.buyer.nickname}) по верификации (${isVerified}, ${deal.id})`);
+  logger.info(`Проверка пользователя (${deal.buyer.nickname}) по верификации (${isVerified}, ${deal.id}, ${deal.deal_id})`);
   if (deal.buyer.verified === isVerified || isVerified === false) {
     const dataMethod = await findMethod(redis, deal);
     if (!dataMethod) return;
@@ -261,33 +261,33 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
 
     const amount = `${deal.amount_currency}`;
 
-    logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.lot.id}, ${dataMethod.methodStr})`);
+    logger.log(`Поиск предворительного телефона (${deal.id}, ${deal.deal_id}, ${deal.lot.id}, ${dataMethod.methodStr})`);
     const [paidUrl, servicePort] = await redis.getsConfig([`${dataMethod.methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${dataMethod.methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
     const prePhone = await getNumber<{}>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id, true);
     if (!prePhone || ('result' in prePhone && prePhone.result === 0)) {
-      logger.error(new Error(`Сделка ${deal.id} не найдены предварительные реквизиты (${dataMethod.methodStr})`));
+      logger.error(new Error(`Сделка ${deal.id} (${deal.deal_id}) не найдены предварительные реквизиты (${dataMethod.methodStr})`));
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
       await ignoreDeal(redis, deal);
-      return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены предварительные реквизиты, нужно проверить`, tgId, mainPort);
+      return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не найдены предварительные реквизиты, нужно проверить`, tgId, mainPort);
     }
-    logger.log({ obj: prePhone }, `Предворительный телефон найден (${deal.id}) ->`);
+    logger.log({ obj: prePhone }, `Предворительный телефон найден (${deal.id}, ${deal.deal_id}) ->`);
 
-    logger.log(`Пользователь (${deal.buyer.nickname}) прошёл верификацию, подтверждение сделки (${deal.id})`);
+    logger.log(`Пользователь (${deal.buyer.nickname}) прошёл верификацию, подтверждение сделки (${deal.id}, ${deal.deal_id})`);
     const evaluateFunc = `statesNextDeal('[accessKey]', '[authKey]', '${deal.id}')`;
     const result = await browser.evalute({ code: evaluateFunc });
     if (result) {
-      logger.info(`Успешное подтверждение принятия сделки (${deal.id})`);
+      logger.info(`Успешное подтверждение принятия сделки (${deal.id}, ${deal.deal_id})`);
       return await requisiteDeal(redis, browser, deal, dataMethod);
     } else {
-      logger.warn(`Не удалось подтвердить принятие сделки (${deal.id}, ${result})`);
+      logger.warn(`Не удалось подтвердить принятие сделки (${deal.id}, ${deal.deal_id}, ${result})`);
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-      return await sendTgNotify(`(sky) Сделка ${deal.id} не удалось подтвердить, обработайте сами`, tgId, mainPort);
+      return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не удалось подтвердить, обработайте сами`, tgId, mainPort);
     }
   } else {
     await ignoreDeal(redis, deal);
-    logger.log(`Пользователь (${deal.buyer.nickname}) не прошёл верификацию, уведомление (${deal.id})`);
+    logger.log(`Пользователь (${deal.buyer.nickname}) не прошёл верификацию, уведомление (${deal.id}, ${deal.deal_id})`);
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-    return await sendTgNotify(`(sky) Сделка ${deal.id} не прошла верификацию пользователя, обработайте сами`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, обработайте сами`, tgId, mainPort);
   }
 }
 
@@ -299,40 +299,40 @@ async function requisiteDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerB
 
   const amount = `${deal.amount_currency}`;
 
-  logger.log(`Поиск телефона (${deal.id}, ${deal.lot.id}, ${dataMethod.methodStr})`);
+  logger.log(`Поиск телефона (${deal.id}, ${deal.deal_id}, ${deal.lot.id}, ${dataMethod.methodStr})`);
   const paidUrl = await redis.getConfig(`${dataMethod.methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig);
   const phone = await getNumber<PhoneServiceData>(`${paidUrl}:${servicePort}/`, Number(amount), methodId, deal.deal_id);
   if (!phone || ('result' in phone && phone.result === 0)) {
-    logger.error(new Error(`Сделка ${deal.id} не найдены реквизиты (${dataMethod.methodStr})`));
+    logger.error(new Error(`Сделка ${deal.id} (${deal.deal_id}) не найдены реквизиты (${dataMethod.methodStr})`));
     await ignoreDeal(redis, deal);
-    return await sendTgNotify(`(sky) Сделка ${deal.id} не найдены реквизиты, нужно проверить`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не найдены реквизиты, нужно проверить`, tgId, mainPort);
   }
-  logger.info({ obj: phone }, `Телефон найден (${deal.id}) ->`);
+  logger.info({ obj: phone }, `Телефон найден (${deal.id}, ${deal.deal_id}) ->`);
 
   // send requisite
-  logger.log(`Отправка реквизитов (${deal.id}): ${phone.requisite.requisite_text}`);
+  logger.log(`Отправка реквизитов (${deal.id}, ${deal.deal_id}): ${phone.requisite.requisite_text}`);
   const evaluateFuncRequisite = `requisiteDeal('[accessKey]', '[authKey]', '${deal.id}', '${phone.requisite.requisite_text}')`;
   const resultRequisite = await browser.evalute({ code: evaluateFuncRequisite });
   if (!resultRequisite) {
     await ignoreDeal(redis, deal);
     return await sendTgNotify(
-      `(sky) Неудалось отправить реквизиты сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
+      `(sky) Неудалось отправить реквизиты сделки ${deal.id} (${deal.deal_id}) (${phone.requisite.text}, ${amount}), нужно обработать самому (поставить в игнор, очистить сделку в скае)`,
       tgId,
       mainPort,
     );
   }
 
   // send chat
-  logger.log(`Отправка сообщения в чат (${deal.id}): ${phone.requisite.chat_text}`);
+  logger.log(`Отправка сообщения в чат (${deal.id}, ${deal.deal_id}): ${phone.requisite.chat_text}`);
   const evaluateFuncChat = `messageDeal('[accessKey]', '[authKey]', '${phone.requisite.chat_text}', '${deal.buyer.nickname}', '${deal.symbol}')`;
   const resultChat = await browser.evalute({ code: evaluateFuncChat });
   if (!resultChat) {
     await ignoreDeal(redis, deal);
-    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Неудалось отправить сообщение в чат сделки ${deal.id} (${deal.deal_id}) (${phone.requisite.text}, ${amount}), нужно обработать самому`, tgId, mainPort);
   }
 
   // save redis phone
-  logger.log(`Сохраняем сделку и телефон (${deal.id}, ${deal.deal_id}, ${phone.requisite.text}, ${amount})`);
+  logger.log(`Сохраняем сделку и телефон (${deal.id}, ${deal.deal_id}, ${deal.deal_id}, ${phone.requisite.text}, ${amount})`);
   const now = Date.now();
   redis.setPhone({
     method: dataMethod.methodStr,
@@ -360,13 +360,13 @@ async function paidDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   if (!dataMethod) return;
 
   const phone = await redis.getPhoneDeal(deal.id);
-  if (!phone) return logger.warn(`Сделка ${deal.id} была в состоянии paid, но не имеет телефона`);
+  if (!phone) return logger.warn(`Сделка ${deal.id} (${deal.deal_id}) была в состоянии paid, но не имеет телефона`);
   const [paidUrl, servicePort] = await redis.getsConfig([`${dataMethod.methodStr.toUpperCase()}_PAID_URL` as KeyOfConfig, `${dataMethod.methodStr.toUpperCase()}_PORT` as KeyOfConfig]);
   const response = await unlockNumber(`${paidUrl}:${servicePort}/`, String(phone.id));
-  if (!response) return logger.warn(`Сделка ${deal.id} не удалось unlock number для проверки телефона`);
+  if (!response) return logger.warn(`Сделка ${deal.id} (${deal.deal_id}) не удалось unlock number для проверки телефона`);
   const now = Date.now();
   await redis.setPhone({ ...phone, unlock_at: now });
-  logger.info(`Сделка ${deal.id} успешно отправлена на проверку телефона`);
+  logger.info(`Сделка ${deal.id} (${deal.deal_id}) успешно отправлена на проверку телефона`);
 }
 
 async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, phone: PhoneServiceData) {
@@ -374,7 +374,11 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
   if (!isLimit) {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
     await ignoreDeal(redis, { id: phone.deal_id } as DetailsDeal);
-    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не подходит по лимитам (${phone.requisite.min_payment_sum}, ${phone.amount}, ${phone.requisite.max_payment_sum})`, tgId, mainPort);
+    return await sendTgNotify(
+      `(sky) Сделка ${phone.deal_id} (${phone.id}) не подходит по лимитам (${phone.requisite.min_payment_sum}, ${phone.amount}, ${phone.requisite.max_payment_sum})`,
+      tgId,
+      mainPort,
+    );
   }
 
   // освобождаем телефон
@@ -398,16 +402,16 @@ async function balance(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser
     const data: DetailsDeal | null = (await browser.evalute({ code: evaluateFunc })) as DetailsDeal | null;
     if (!data) {
       const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
-      logger.warn(`Сделка ${phone.deal_id} не удалось отправить на завершение`);
+      logger.warn(`Сделка ${phone.deal_id} (${phone.id}) не удалось отправить на завершение`);
       await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
-      return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
+      return await sendTgNotify(`(sky) Сделка ${phone.deal_id} (${phone.id}) не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
     }
     return await closedDeal(redis, browser, data);
   } else {
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as number[];
-    logger.warn(`Сделка ${phone.deal_id} не удалось отправить на завершение`);
+    logger.warn(`Сделка ${phone.deal_id} (${phone.id}) не удалось отправить на завершение`);
     await ignoreDeal(redis, { id: phone.deal_id, state: 'paid' });
-    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
+    return await sendTgNotify(`(sky) Сделка ${phone.deal_id} (${phone.id}) не удалось отправить за завершение, отправте на завершения сами (лайк тоже сами)`, tgId, mainPort);
   }
 }
 
