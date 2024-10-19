@@ -80,7 +80,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
   const getNewDeals = async (deals: DealGet[]) => {
     const oldDeals = await redis.getCacheDeals();
-    logger.log({ obj: oldDeals }, `Данные списка из памяти`);
+    // logger.log({ obj: oldDeals }, `Данные списка из памяти`);
 
     const findNewDeals = deals
       .filter((now) => {
@@ -117,7 +117,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
   const allDeals = btcDeals.concat(usdtDeals);
   newDeals = await getNewDeals(allDeals);
-  logger.log({ obj: newDeals }, `Данные new deals`);
+  // logger.log({ obj: newDeals }, `Данные new deals`);
 
   logger.info(`Общее количество сделок ${allDeals.length}`);
   logger.info(`Количество новых сделок ${newDeals.length}`);
