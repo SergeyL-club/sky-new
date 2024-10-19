@@ -95,7 +95,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
         const isState = actualState.includes(now.state);
         const isNowState = !isNow && now.state !== candidate.state && isState;
         const isDispute = now.dispute && now.state !== 'closed';
-        logger.log(`Сделка ${now.id} (${isNow}, ${isNowState}, ${isDispute})`);
+        // logger.log(`Сделка ${now.id} (${isNow}, ${isNowState}, ${isDispute})`);
         return (isNow && isState) || isNowState || isDispute;
       })
       .map((now) => ({ id: now.id, state: now.state }));
@@ -109,10 +109,10 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 
   let newDeals = [] as CacheDeal[];
   // const btcNewDeals = await getNewDeals(btcDeals);
-  logger.log({ obj: btcDeals }, `Данные btc`);
+  // logger.log({ obj: btcDeals }, `Данные btc`);
   // logger.log({ obj: btcNewDeals }, `Данные btc (new)`);
   // const usdtNewDeals = await getNewDeals(usdtDeals);
-  logger.log({ obj: usdtDeals }, `Данные usdt`);
+  // logger.log({ obj: usdtDeals }, `Данные usdt`);
   // logger.log({ obj: usdtNewDeals }, `Данные usdt (new)`);
 
   const allDeals = btcDeals.concat(usdtDeals);
