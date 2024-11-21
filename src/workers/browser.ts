@@ -141,7 +141,7 @@ class WorkerBrowser {
         .map(function (t) {
           return localKeys[t];
         })
-        .join('') + 'l';
+        .join('') + 'lsc';
     return md5(o);
   };
 
