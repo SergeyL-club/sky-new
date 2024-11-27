@@ -11,7 +11,7 @@ import { wrap } from 'comlink';
 import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingDeals, pollingPhone } from './utils/timer.js';
-import { get_method_id, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
+import { blockUser, get_method_id, getNumber, sendGet, sendTgNotify, unlockNumber } from './utils/paidMethod.js';
 import { fileURLToPath } from 'node:url';
 import { delay } from './utils/dateTime.js';
 
@@ -217,6 +217,17 @@ async function disputePhone(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
   }
 }
 
+async function cancelDeal(browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
+  logger.info(`Отменяем сделку ${deal.id}`);
+  const evaluateFunc = `cancelDeal('[accessKey]', '[authKey]', '${deal.id}')`;
+  try {
+    await browser.evalute({ code: evaluateFunc });
+    return true;
+  } catch (e: unknown) {
+    return false;
+  }
+} 
+
 async function disputDeal(redis: Remote<WorkerRedis>, deal: DetailsDeal) {
   logger.info(`Сделка ${deal.id} (${deal.deal_id}) находится в споре, освобождение и отправка уведомления`);
 
@@ -250,9 +261,9 @@ async function closedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
 }
 
 async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, deal: DetailsDeal) {
-  const isVerified = (await redis.getConfig('IS_VERIFIED')) as unknown as boolean;
+  const [isVerified, target_verif] = (await redis.getsConfig(['IS_VERIFIED', 'TARGET_VERIFIED'])) as [boolean, string];
   logger.info(`Проверка пользователя (${deal.buyer.nickname}) по верификации (${isVerified}, ${deal.id}, ${deal.deal_id})`);
-  if (deal.buyer.verified === isVerified || isVerified === false) {
+  if (deal.buyer.nickname.slice(0, 2) === target_verif || isVerified === false) {
     const dataMethod = await findMethod(redis, deal);
     if (!dataMethod) return;
 
@@ -287,7 +298,14 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
     await ignoreDeal(redis, deal);
     logger.log(`Пользователь (${deal.buyer.nickname}) не прошёл верификацию, уведомление (${deal.id}, ${deal.deal_id})`);
     const [tgId, mainPort] = (await redis.getsConfig(['TG_ID', 'PORT'])) as [number, number];
-    return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, обработайте сами`, tgId, mainPort);
+    let isCancel = await cancelDeal(browser, deal);
+    if (!isCancel) 
+      return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, но не смогли отменить, обработайте сами`, tgId, mainPort)
+    const url = await redis.getConfig('BLOCK_URL') as string;
+    const isBlock = await blockUser<{ status: boolean }>(url, deal.buyer.nickname);
+    if (!isBlock)
+      return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, но не смогли заблокировать, обработайте сами`, tgId, mainPort)
+    return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, отправили в бан`, tgId, mainPort);
   }
 }
 

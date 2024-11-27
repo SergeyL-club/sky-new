@@ -34,6 +34,8 @@ export const PASSWORD: string = 'fMwbh7XeXdTYNci';
 
 // конфиг сделки
 export const IS_VERIFIED: boolean = false;
+export const TARGET_VERIFIED: string = "fd";
+export const BLOCK_URL: string = "http://51.68.137.132:8014"
 
 // автоматическая отмена или открытие спора по истечению времени телефона
 export const TIMER_PHONE: boolean = true;

@@ -56,6 +56,11 @@ export async function sendRequest<Type>(url: string, subUrl: string, maxRepeat =
   return JSON.parse(result + '');
 }
 
+export async function blockUser<Type>(url: string, user: string) {
+  let subUrl = `/command=block-user&user=${user}`;
+  return await sendRequest<Type>(url, subUrl);
+}
+
 export async function getNumber<Type>(url: string, sum: number, method: Awaited<ReturnType<typeof get_method_id>>, id: number = -1, is_pre = false) {
   let subUrl = `get-requisite?method_id=${method}&deal_id=${id}&sum=${sum}`;
   if (is_pre) subUrl += '&test=1';
