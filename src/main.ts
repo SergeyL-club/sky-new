@@ -303,7 +303,7 @@ async function proposedDeal(redis: Remote<WorkerRedis>, browser: Remote<WorkerBr
       return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, но не смогли отменить, обработайте сами`, tgId, mainPort)
     const url = await redis.getConfig('BLOCK_URL') as string;
     const isBlock = await blockUser<{ status: boolean }>(url, deal.buyer.nickname, deal.symbol);
-    if (!isBlock)
+    if (!isBlock || !isBlock.status)
       return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, но не смогли заблокировать, обработайте сами`, tgId, mainPort)
     return await sendTgNotify(`(sky) Сделка ${deal.id} (${deal.deal_id}) не прошла верификацию пользователя, отправили в бан`, tgId, mainPort);
   }
