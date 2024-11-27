@@ -56,8 +56,8 @@ export async function sendRequest<Type>(url: string, subUrl: string, maxRepeat =
   return JSON.parse(result + '');
 }
 
-export async function blockUser<Type>(url: string, user: string) {
-  let subUrl = `/command=block-user&user=${user}`;
+export async function blockUser<Type>(url: string, user: string, symbol: 'btc' | 'usdt') {
+  let subUrl = `/command=block-user&user=${user}&symbol=${symbol}`;
   return await sendRequest<Type>(url, subUrl);
 }
 
